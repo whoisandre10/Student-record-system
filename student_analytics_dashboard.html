@@ -1,0 +1,305 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --cream:#faf8f4;--ink:#1a1714;--muted:#8c8680;--border:#e8e3db;
+    --rust:#c2522a;--gold:#d4a84b;--sage:#4a7c6a;--sky:#3b6fa0;
+    --card:#ffffff;
+    --font-head:'DM Serif Display',serif;
+    --font-body:'DM Sans',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{--cream:#1c1a17;--ink:#f0ece4;--muted:#8c8a84;--border:#2e2c28;--card:#232119;}
+  }
+  body{background:var(--cream);color:var(--ink);font-family:var(--font-body);font-size:14px;font-weight:400;line-height:1.5}
+
+  .dash{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+  /* sidebar */
+  .sb{background:var(--ink);color:#f0ece4;padding:28px 0;display:flex;flex-direction:column;gap:2px}
+  .sb-logo{padding:0 24px 24px;font-family:var(--font-head);font-size:20px;letter-spacing:-0.3px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+  .sb-logo span{color:var(--gold);font-style:italic}
+  .sb-section{padding:8px 24px 4px;font-size:10px;letter-spacing:2px;color:rgba(240,236,228,.4);text-transform:uppercase}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:9px 24px;cursor:pointer;color:rgba(240,236,228,.65);font-size:13px;font-weight:400;border-left:3px solid transparent;transition:all .15s}
+  .sb-item:hover{color:#f0ece4;background:rgba(255,255,255,.06)}
+  .sb-item.act{color:#f0ece4;border-left-color:var(--gold);background:rgba(255,255,255,.08)}
+  .sb-item svg{width:15px;height:15px;opacity:.7;flex-shrink:0}
+  .sb-bottom{margin-top:auto;padding:20px 24px;border-top:1px solid rgba(255,255,255,.1)}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--rust);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;flex-shrink:0}
+  .sb-user{display:flex;align-items:center;gap:10px}
+  .sb-user-name{font-size:13px;font-weight:500;color:#f0ece4}
+  .sb-user-role{font-size:11px;color:rgba(240,236,228,.5)}
+
+  /* main */
+  .main{padding:36px 40px;display:flex;flex-direction:column;gap:28px;overflow:hidden}
+
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .page-title{font-family:var(--font-head);font-size:28px;font-weight:400;letter-spacing:-0.5px;line-height:1.1}
+  .page-sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .top-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .chip{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--ink);font-family:var(--font-body)}
+  .chip.primary{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+
+  /* stat row */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden}
+  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+  .stat-card.a::before{background:var(--rust)}
+  .stat-card.b::before{background:var(--gold)}
+  .stat-card.c::before{background:var(--sage)}
+  .stat-card.d::before{background:var(--sky)}
+  .stat-label{font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+  .stat-val{font-family:var(--font-head);font-size:34px;letter-spacing:-1px;line-height:1}
+  .stat-delta{font-size:11px;margin-top:6px;display:flex;align-items:center;gap:4px}
+  .stat-delta.up{color:var(--sage)}
+  .stat-delta.dn{color:var(--rust)}
+
+  /* two-col */
+  .two-col{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+
+  /* chart card */
+  .chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+  .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .card-title{font-family:var(--font-head);font-size:17px;font-weight:400;letter-spacing:-0.3px}
+  .card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .legend{display:flex;gap:14px}
+  .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+  .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+  /* bar chart */
+  .bar-chart{display:flex;align-items:flex-end;gap:10px;height:140px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+  .bar{border-radius:4px 4px 0 0;transition:opacity .15s;cursor:pointer;flex:1}
+  .bar:hover{opacity:.8}
+  .bar-month{font-size:10px;color:var(--muted);text-align:center}
+
+  /* top programs */
+  .prog-list{display:flex;flex-direction:column;gap:12px}
+  .prog-item{display:flex;flex-direction:column;gap:5px}
+  .prog-row{display:flex;justify-content:space-between;align-items:center}
+  .prog-name{font-size:12px;font-weight:500}
+  .prog-pct{font-size:12px;color:var(--muted)}
+  .prog-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+  .prog-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+
+  /* student table */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .tbl-head{display:grid;grid-template-columns:2fr 1.2fr 1fr 80px 60px;padding:12px 20px;background:var(--cream);border-bottom:1px solid var(--border);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .tbl-row{display:grid;grid-template-columns:2fr 1.2fr 1fr 80px 60px;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .1s}
+  .tbl-row:last-child{border-bottom:none}
+  .tbl-row:hover{background:var(--cream)}
+  .stud-name{display:flex;align-items:center;gap:10px;font-weight:500;font-size:13px}
+  .stud-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+  .tbl-cell{font-size:12px;color:var(--muted)}
+  .tbl-cell.ink{color:var(--ink);font-weight:500}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500}
+  .badge.active{background:rgba(74,124,106,.12);color:var(--sage)}
+  .badge.probation{background:rgba(194,82,42,.12);color:var(--rust)}
+  .badge.inactive{background:rgba(140,134,128,.12);color:var(--muted)}
+  .gpa-chip{font-size:12px;font-weight:500;text-align:right}
+  .gpa-hi{color:var(--sage)} .gpa-md{color:var(--gold)} .gpa-lo{color:var(--rust)}
+</style>
+
+<div class="dash">
+  <nav class="sb">
+    <div class="sb-logo">Alma<span>RMS</span></div>
+
+    <div class="sb-section">Overview</div>
+    <div class="sb-item act">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Students
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      Programs
+    </div>
+
+    <div class="sb-section">Operations</div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Records
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analytics
+    </div>
+
+    <div class="sb-bottom">
+      <div class="sb-user">
+        <div class="avatar">RK</div>
+        <div>
+          <div class="sb-user-name">Dr. R. Kamau</div>
+          <div class="sb-user-role">Registrar</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="top-bar">
+      <div>
+        <div class="page-title">Student Overview</div>
+        <div class="page-sub">Academic Year 2025–2026 · Semester 2</div>
+      </div>
+      <div class="top-actions">
+        <button class="chip">↓ Export</button>
+        <button class="chip primary">+ Add Student</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-row">
+      <div class="stat-card a">
+        <div class="stat-label">Total Enrolled</div>
+        <div class="stat-val">3,842</div>
+        <div class="stat-delta up">↑ 12% from last year</div>
+      </div>
+      <div class="stat-card b">
+        <div class="stat-label">Active Programmes</div>
+        <div class="stat-val">18</div>
+        <div class="stat-delta up">↑ 2 new this year</div>
+      </div>
+      <div class="stat-card c">
+        <div class="stat-label">Avg. GPA</div>
+        <div class="stat-val">3.24</div>
+        <div class="stat-delta up">↑ 0.08 pts</div>
+      </div>
+      <div class="stat-card d">
+        <div class="stat-label">Graduation Rate</div>
+        <div class="stat-val">87%</div>
+        <div class="stat-delta dn">↓ 2% from target</div>
+      </div>
+    </div>
+
+    <!-- Chart row -->
+    <div class="two-col">
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Enrolment by Month</div>
+            <div class="card-sub">New registrations vs departures</div>
+          </div>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--rust)"></div>New</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--border)"></div>Left</div>
+          </div>
+        </div>
+        <div class="bar-chart" id="barChart"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Top Programmes</div>
+            <div class="card-sub">By enrolment share</div>
+          </div>
+        </div>
+        <div class="prog-list" id="progList"></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-family:var(--font-head);font-size:17px;font-weight:400;letter-spacing:-0.3px">Recent Students</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Sorted by registration date</div>
+        </div>
+        <button class="chip" style="font-size:11px">View all →</button>
+      </div>
+      <div class="table-card">
+        <div class="tbl-head">
+          <div>Student</div>
+          <div>Programme</div>
+          <div>Year</div>
+          <div>Status</div>
+          <div style="text-align:right">GPA</div>
+        </div>
+        <div id="studTable"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const months = ['Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const newIn  = [210,185,240,95,60,310,275,190];
+const left   = [20,15,30,12,8,25,18,14];
+const maxVal = Math.max(...newIn);
+
+const barChart = document.getElementById('barChart');
+months.forEach((m,i) => {
+  const col = document.createElement('div');
+  col.className = 'bar-col';
+  const h1 = Math.round((newIn[i]/maxVal)*120);
+  const h2 = Math.round((left[i]/maxVal)*120);
+  col.innerHTML = `
+    <div class="bar-wrap">
+      <div class="bar" style="height:${h1}px;background:var(--rust);opacity:.85" title="New: ${newIn[i]}"></div>
+      <div class="bar" style="height:${h2}px;background:var(--border)" title="Left: ${left[i]}"></div>
+    </div>
+    <div class="bar-month">${m}</div>`;
+  barChart.appendChild(col);
+});
+
+const progs = [
+  {name:'Computer Science', pct:28, color:'var(--rust)'},
+  {name:'Business Admin',   pct:22, color:'var(--gold)'},
+  {name:'Information Tech', pct:18, color:'var(--sage)'},
+  {name:'Electrical Eng.',  pct:14, color:'var(--sky)'},
+  {name:'Mathematics',      pct:10, color:'var(--muted)'},
+  {name:'Other',            pct:8,  color:'var(--border)'},
+];
+const progList = document.getElementById('progList');
+progs.forEach(p => {
+  progList.innerHTML += `
+    <div class="prog-item">
+      <div class="prog-row">
+        <span class="prog-name">${p.name}</span>
+        <span class="prog-pct">${p.pct}%</span>
+      </div>
+      <div class="prog-bar-bg">
+        <div class="prog-bar-fill" style="width:${p.pct*3.2}px;background:${p.color}"></div>
+      </div>
+    </div>`;
+});
+
+const students = [
+  {id:'STU-001',name:'Alice Mwale',    init:'AM',color:'#c2522a',prog:'Computer Science',yr:'Year 2',status:'active',  gpa:3.8},
+  {id:'STU-002',name:'Brian Tembo',    init:'BT',color:'#3b6fa0',prog:'Inform. Technology',yr:'Year 1',status:'active',  gpa:3.2},
+  {id:'STU-003',name:'Chanda Phiri',   init:'CP',color:'#4a7c6a',prog:'Electrical Eng.',yr:'Year 3',status:'probation',gpa:2.1},
+  {id:'STU-004',name:'Diana Banda',    init:'DB',color:'#d4a84b',prog:'Business Admin',yr:'Year 4',status:'active',  gpa:3.6},
+  {id:'STU-005',name:'Emmanuel Zulu',  init:'EZ',color:'#8c8680',prog:'Mathematics',yr:'Year 2',status:'active',  gpa:3.4},
+  {id:'STU-006',name:'Fatima Lungu',   init:'FL',color:'#c2522a',prog:'Computer Science',yr:'Year 3',status:'inactive',gpa:2.8},
+];
+
+const tbl = document.getElementById('studTable');
+students.forEach(s => {
+  const gpaClass = s.gpa >= 3.5 ? 'gpa-hi' : s.gpa >= 2.5 ? 'gpa-md' : 'gpa-lo';
+  const badgeClass = s.status === 'active' ? 'active' : s.status === 'probation' ? 'probation' : 'inactive';
+  tbl.innerHTML += `
+    <div class="tbl-row">
+      <div class="stud-name">
+        <div class="stud-avatar" style="background:${s.color}1a;color:${s.color}">${s.init}</div>
+        <div>
+          <div>${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:400">${s.id}</div>
+        </div>
+      </div>
+      <div class="tbl-cell">${s.prog}</div>
+      <div class="tbl-cell">${s.yr}</div>
+      <div><span class="badge ${badgeClass}">${s.status.charAt(0).toUpperCase()+s.status.slice(1)}</span></div>
+      <div class="gpa-chip ${gpaClass}">${s.gpa.toFixed(1)}</div>
+    </div>`;
+});
+</script>

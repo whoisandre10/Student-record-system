@@ -1,0 +1,901 @@
+"""
+╔══════════════════════════════════════════════════════════════╗
+║         AlmaRMS — Student Record Management System           ║
+║         Python Implementation · All Data Structures          ║
+╠══════════════════════════════════════════════════════════════╣
+║  Data Structures Used:                                       ║
+║   1. Doubly Linked List  — primary student storage           ║
+║   2. Stack (LIFO)        — undo last delete                  ║
+║   3. Queue (FIFO)        — registration pipeline             ║
+║   4. Hash Table          — O(1) search by student ID         ║
+║   5. Binary Search Tree  — sorted index / O(log n) search    ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+
+import os
+import sys
+import textwrap
+from datetime import datetime
+
+
+# ─────────────────────────────────────────────────────────────
+#  TERMINAL COLOURS  (graceful fallback if unsupported)
+# ─────────────────────────────────────────────────────────────
+class C:
+    RESET  = "\033[0m"
+    BOLD   = "\033[1m"
+    DIM    = "\033[2m"
+
+    BLACK  = "\033[30m"
+    RED    = "\033[31m"
+    GREEN  = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE   = "\033[34m"
+    MAGENTA= "\033[35m"
+    CYAN   = "\033[36m"
+    WHITE  = "\033[37m"
+
+    BG_BLACK  = "\033[40m"
+    BG_BLUE   = "\033[44m"
+    BG_CYAN   = "\033[46m"
+
+    @staticmethod
+    def rust(text):   return f"\033[38;5;166m{text}{C.RESET}"
+    @staticmethod
+    def gold(text):   return f"\033[38;5;178m{text}{C.RESET}"
+    @staticmethod
+    def sage(text):   return f"\033[38;5;72m{text}{C.RESET}"
+    @staticmethod
+    def sky(text):    return f"\033[38;5;68m{text}{C.RESET}"
+    @staticmethod
+    def muted(text):  return f"\033[38;5;244m{text}{C.RESET}"
+    @staticmethod
+    def bold(text):   return f"{C.BOLD}{text}{C.RESET}"
+    @staticmethod
+    def header(text): return f"\033[38;5;166m{C.BOLD}{text}{C.RESET}"
+    @staticmethod
+    def success(text):return f"\033[38;5;72m{text}{C.RESET}"
+    @staticmethod
+    def error(text):  return f"\033[31m{text}{C.RESET}"
+    @staticmethod
+    def warn(text):   return f"\033[38;5;178m{text}{C.RESET}"
+    @staticmethod
+    def info(text):   return f"\033[38;5;68m{text}{C.RESET}"
+
+
+# ─────────────────────────────────────────────────────────────
+#  DATA STRUCTURE 1 — DOUBLY LINKED LIST
+# ─────────────────────────────────────────────────────────────
+class LLNode:
+    """A single node in the doubly linked list."""
+    def __init__(self, student: dict):
+        self.student = student
+        self.next: "LLNode | None" = None
+        self.prev: "LLNode | None" = None
+
+
+class LinkedList:
+    """
+    Doubly Linked List — primary storage for all student records.
+    Chosen because: dynamic size, O(1) insert at tail, efficient
+    node removal without shifting, easy sequential traversal.
+    """
+    def __init__(self):
+        self.head: LLNode | None = None
+        self.tail: LLNode | None = None
+        self.size: int = 0
+
+    def append(self, student: dict) -> None:
+        """Insert a new student at the tail — O(1)."""
+        node = LLNode(student)
+        if self.tail is None:
+            self.head = self.tail = node
+        else:
+            node.prev = self.tail
+            self.tail.next = node
+            self.tail = node
+        self.size += 1
+
+    def remove(self, student_id: str) -> dict | None:
+        """Find and remove a node by student ID — O(n)."""
+        cur = self.head
+        while cur:
+            if cur.student["id"] == student_id:
+                if cur.prev:
+                    cur.prev.next = cur.next
+                else:
+                    self.head = cur.next
+                if cur.next:
+                    cur.next.prev = cur.prev
+                else:
+                    self.tail = cur.prev
+                self.size -= 1
+                return cur.student
+            cur = cur.next
+        return None
+
+    def update(self, student_id: str, updates: dict) -> dict | None:
+        """Update fields of an existing student node — O(n)."""
+        cur = self.head
+        while cur:
+            if cur.student["id"] == student_id:
+                cur.student.update(updates)
+                return cur.student
+            cur = cur.next
+        return None
+
+    def find(self, student_id: str) -> dict | None:
+        """Linear search by ID — O(n). Prefer Hash Table for lookups."""
+        cur = self.head
+        while cur:
+            if cur.student["id"] == student_id:
+                return cur.student
+            cur = cur.next
+        return None
+
+    def to_list(self) -> list[dict]:
+        """Return all students as a Python list — O(n)."""
+        result = []
+        cur = self.head
+        while cur:
+            result.append(cur.student)
+            cur = cur.next
+        return result
+
+    def __len__(self) -> int:
+        return self.size
+
+
+# ─────────────────────────────────────────────────────────────
+#  DATA STRUCTURE 2 — STACK (LIFO)
+# ─────────────────────────────────────────────────────────────
+class Stack:
+    """
+    Stack — last-in, first-out structure for undo delete.
+    Chosen because: deleted records are pushed here so the
+    most-recently-deleted student can be restored in O(1).
+    Push on delete, pop on undo.
+    """
+    def __init__(self):
+        self._items: list[dict] = []
+
+    def push(self, item: dict) -> None:
+        """Push a deleted student onto the stack — O(1)."""
+        self._items.append(item)
+
+    def pop(self) -> dict | None:
+        """Pop the top (most recently deleted) student — O(1)."""
+        return self._items.pop() if self._items else None
+
+    def peek(self) -> dict | None:
+        """Peek at the top without removing — O(1)."""
+        return self._items[-1] if self._items else None
+
+    def is_empty(self) -> bool:
+        return len(self._items) == 0
+
+    def size(self) -> int:
+        return len(self._items)
+
+    def to_list(self) -> list[dict]:
+        """Return stack contents, top first."""
+        return list(reversed(self._items))
+
+
+# ─────────────────────────────────────────────────────────────
+#  DATA STRUCTURE 3 — QUEUE (FIFO)
+# ─────────────────────────────────────────────────────────────
+class Queue:
+    """
+    Queue — first-in, first-out registration pipeline.
+    Chosen because: new students are enqueued and processed
+    in arrival order, modelling real admission workflows.
+    Enqueue and dequeue are both O(1).
+    """
+    def __init__(self):
+        self._items: list[dict] = []
+
+    def enqueue(self, item: dict) -> None:
+        """Add a student to the rear of the queue — O(1)."""
+        self._items.append(item)
+
+    def dequeue(self) -> dict | None:
+        """Remove and return the front student — O(1)."""
+        return self._items.pop(0) if self._items else None
+
+    def peek(self) -> dict | None:
+        return self._items[0] if self._items else None
+
+    def is_empty(self) -> bool:
+        return len(self._items) == 0
+
+    def size(self) -> int:
+        return len(self._items)
+
+    def to_list(self) -> list[dict]:
+        return list(self._items)
+
+
+# ─────────────────────────────────────────────────────────────
+#  DATA STRUCTURE 4 — HASH TABLE
+# ─────────────────────────────────────────────────────────────
+class HashTable:
+    """
+    Hash Table with separate chaining for collision resolution.
+    Chosen because: O(1) average-case search by Student ID,
+    critical when the college has thousands of records.
+    """
+    def __init__(self, capacity: int = 128):
+        self._capacity = capacity
+        self._buckets: list[list] = [[] for _ in range(capacity)]
+        self._count = 0
+
+    def _hash(self, key: str) -> int:
+        """Polynomial rolling hash function."""
+        h = 0
+        for ch in key:
+            h = (h * 31 + ord(ch)) % self._capacity
+        return h
+
+    def set(self, key: str, value: dict) -> None:
+        """Insert or update a key-value pair — O(1) average."""
+        idx = self._hash(key)
+        bucket = self._buckets[idx]
+        for i, (k, _) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, value)
+                return
+        bucket.append((key, value))
+        self._count += 1
+
+    def get(self, key: str) -> dict | None:
+        """Retrieve a value by key — O(1) average."""
+        idx = self._hash(key)
+        for k, v in self._buckets[idx]:
+            if k == key:
+                return v
+        return None
+
+    def delete(self, key: str) -> bool:
+        """Remove a key-value pair — O(1) average."""
+        idx = self._hash(key)
+        bucket = self._buckets[idx]
+        for i, (k, _) in enumerate(bucket):
+            if k == key:
+                bucket.pop(i)
+                self._count -= 1
+                return True
+        return False
+
+    def __contains__(self, key: str) -> bool:
+        return self.get(key) is not None
+
+    def __len__(self) -> int:
+        return self._count
+
+
+# ─────────────────────────────────────────────────────────────
+#  DATA STRUCTURE 5 — BINARY SEARCH TREE
+# ─────────────────────────────────────────────────────────────
+class BSTNode:
+    """A node in the Binary Search Tree."""
+    def __init__(self, student: dict):
+        self.student = student
+        self.left:  "BSTNode | None" = None
+        self.right: "BSTNode | None" = None
+
+
+class BST:
+    """
+    Binary Search Tree ordered by Student ID (lexicographic).
+    Chosen because: O(log n) search/insert/delete and in-order
+    traversal yields students sorted by ID. Acts as a secondary
+    sorted index complementing the Hash Table.
+    """
+    def __init__(self):
+        self.root: BSTNode | None = None
+
+    def insert(self, student: dict) -> None:
+        """Insert or update a student node — O(log n) avg."""
+        self.root = self._insert(self.root, student)
+
+    def _insert(self, node: BSTNode | None, student: dict) -> BSTNode:
+        if node is None:
+            return BSTNode(student)
+        if student["id"] < node.student["id"]:
+            node.left = self._insert(node.left, student)
+        elif student["id"] > node.student["id"]:
+            node.right = self._insert(node.right, student)
+        else:
+            node.student = student          # update in-place
+        return node
+
+    def find(self, student_id: str) -> dict | None:
+        """Search by ID — O(log n) average."""
+        return self._find(self.root, student_id)
+
+    def _find(self, node: BSTNode | None, sid: str) -> dict | None:
+        if node is None:
+            return None
+        if sid == node.student["id"]:
+            return node.student
+        return self._find(node.left, sid) if sid < node.student["id"] else self._find(node.right, sid)
+
+    def delete(self, student_id: str) -> None:
+        """Delete a node by ID — O(log n) average."""
+        self.root = self._delete(self.root, student_id)
+
+    def _delete(self, node: BSTNode | None, sid: str) -> BSTNode | None:
+        if node is None:
+            return None
+        if sid < node.student["id"]:
+            node.left = self._delete(node.left, sid)
+        elif sid > node.student["id"]:
+            node.right = self._delete(node.right, sid)
+        else:
+            if node.left is None:
+                return node.right
+            if node.right is None:
+                return node.left
+            # Replace with in-order successor (smallest in right subtree)
+            successor = node.right
+            while successor.left:
+                successor = successor.left
+            node.student = successor.student
+            node.right = self._delete(node.right, successor.student["id"])
+        return node
+
+    def inorder(self) -> list[dict]:
+        """In-order traversal — returns students sorted by ID — O(n)."""
+        result = []
+        self._inorder(self.root, result)
+        return result
+
+    def _inorder(self, node: BSTNode | None, result: list) -> None:
+        if node:
+            self._inorder(node.left, result)
+            result.append(node.student)
+            self._inorder(node.right, result)
+
+
+# ─────────────────────────────────────────────────────────────
+#  DISPLAY HELPERS
+# ─────────────────────────────────────────────────────────────
+WIDTH = 72
+
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def rule(char="─", width=WIDTH, color=None):
+    line = char * width
+    print(color(line) if color else C.muted(line))
+
+def banner():
+    clear()
+    rule("═", color=C.rust)
+    print(C.header(f"{'AlmaRMS — Student Record Management System':^{WIDTH}}"))
+    rule("═", color=C.rust)
+    ds_line = "  Linked List · Stack · Queue · Hash Table · BST  "
+    print(C.muted(f"{ds_line:^{WIDTH}}"))
+    rule("─", color=C.muted)
+    print()
+
+def pause(msg="Press Enter to continue..."):
+    input(C.muted(f"\n  {msg}"))
+
+def section(title: str):
+    print()
+    rule("─", color=C.muted)
+    print(C.bold(f"  {title}"))
+    rule("─", color=C.muted)
+
+def notify(msg: str, kind: str = "success"):
+    icons   = {"success": "✓", "error": "✗", "info": "i", "warn": "!"}
+    colours = {"success": C.sage, "error": C.error, "info": C.info, "warn": C.warn}
+    fn = colours.get(kind, C.sage)
+    icon = icons.get(kind, "•")
+    print(f"\n  {fn(f'[{icon}]')} {fn(msg)}")
+
+def print_student_row(s: dict, index=None, show_gpa: bool = True):
+    idx_str  = f"{index:>3}." if index is not None else "   "
+    gpa_str  = f"GPA {s.get('gpa', 0):.1f}" if show_gpa and s.get("gpa") else ""
+    status   = s.get("status", "active")
+    status_c = {"active": C.sage, "probation": C.warn, "inactive": C.muted}
+    sfn      = status_c.get(status, C.muted)
+    sid_trunc  = s['id'][:10]
+    name_trunc = s['name'][:22]
+    prog_trunc = s['program'][:26]
+    tag = sfn(f"[{status[:3].upper()}]")
+    print(
+        f"  {C.muted(idx_str)} "
+        f"{C.bold(sid_trunc):<18} "
+        f"{name_trunc:<22} "
+        f"{C.muted(prog_trunc):<34} "
+        f"Yr{s['year']} "
+        f"{tag:<20} "
+        f"{C.gold(gpa_str)}"
+    )
+
+def print_table(students: list[dict], title: str = "", show_gpa: bool = True):
+    if title:
+        section(title)
+    if not students:
+        print(C.muted("  (no records)"))
+        return
+    header = (
+        f"  {'#':>3}  "
+        f"{'ID':<10} "
+        f"{'Name':<22} "
+        f"{'Programme':<26} "
+        f"{'Yr':<4} "
+        f"{'Status':<12} "
+        f"{'GPA'}"
+    )
+    print(C.muted(header))
+    rule("·", color=C.muted)
+    for i, s in enumerate(students, 1):
+        print_student_row(s, index=i, show_gpa=show_gpa)
+
+def input_field(prompt: str, default: str = "") -> str:
+    hint = f" [{default}]" if default else ""
+    val = input(f"  {C.muted('›')} {prompt}{C.muted(hint)}: ").strip()
+    return val if val else default
+
+def choose(prompt: str, options: list[str]) -> str:
+    """Display numbered options and return the chosen value."""
+    for i, opt in enumerate(options, 1):
+        print(f"    {C.muted(str(i)+'.')} {opt}")
+    while True:
+        choice = input(f"  {C.muted('›')} {prompt} [1-{len(options)}]: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            return options[int(choice) - 1]
+        print(C.error("  Invalid choice, try again."))
+
+
+# ─────────────────────────────────────────────────────────────
+#  STUDENT RECORD MANAGEMENT SYSTEM
+# ─────────────────────────────────────────────────────────────
+class StudentRMS:
+    PROGRAMMES = [
+        "Computer Science",
+        "Information Technology",
+        "Electrical Engineering",
+        "Business Administration",
+        "Mathematics",
+    ]
+
+    def __init__(self):
+        # Instantiate all five data structures
+        self.ll    = LinkedList()
+        self.stack = Stack()
+        self.queue = Queue()
+        self.ht    = HashTable()
+        self.bst   = BST()
+
+        self._load_seed_data()
+
+    # ── internal helpers ─────────────────────────────────────
+    def _insert_all(self, student: dict) -> None:
+        """Insert into all three primary structures simultaneously."""
+        self.ll.append(student)
+        self.ht.set(student["id"], student)
+        self.bst.insert(student)
+
+    def _delete_all(self, student_id: str) -> dict | None:
+        """Remove from LL, HT, BST and push to undo stack."""
+        s = self.ll.remove(student_id)
+        if s:
+            self.ht.delete(student_id)
+            self.bst.delete(student_id)
+            self.stack.push(dict(s))   # push a copy
+        return s
+
+    def _update_all(self, student_id: str, updates: dict) -> dict | None:
+        """Update LL node, HT value, and BST node."""
+        s = self.ll.update(student_id, updates)
+        if s:
+            self.ht.set(student_id, s)
+            self.bst.insert(s)
+        return s
+
+    def _load_seed_data(self):
+        seed = [
+            {"id": "STU-001", "name": "Alice Mwale",    "program": "Computer Science",      "year": "2", "status": "active",    "gpa": 3.8},
+            {"id": "STU-002", "name": "Brian Tembo",    "program": "Information Technology", "year": "1", "status": "active",    "gpa": 3.2},
+            {"id": "STU-003", "name": "Chanda Phiri",   "program": "Electrical Engineering", "year": "3", "status": "probation", "gpa": 2.1},
+            {"id": "STU-004", "name": "Diana Banda",    "program": "Business Administration","year": "4", "status": "active",    "gpa": 3.6},
+            {"id": "STU-005", "name": "Emmanuel Zulu",  "program": "Mathematics",            "year": "2", "status": "active",    "gpa": 3.4},
+            {"id": "STU-006", "name": "Fatima Lungu",   "program": "Computer Science",       "year": "3", "status": "inactive",  "gpa": 2.8},
+        ]
+        for s in seed:
+            self._insert_all(s)
+
+    # ─────────────────────────────────────────────────────────
+    #  MENU OPERATIONS
+    # ─────────────────────────────────────────────────────────
+
+    def menu_add_student(self):
+        """Enqueue a new student (Queue → process to LL/HT/BST)."""
+        section("Add Student — Enqueue Registration")
+        print(C.muted("  Students are first enqueued, then processed into all data structures.\n"))
+
+        sid = input_field("Student ID (e.g. STU-007)").upper()
+        if not sid:
+            notify("Student ID cannot be empty.", "error"); return
+        if sid in self.ht:
+            notify(f"ID {sid} already exists in records.", "error"); return
+        if any(s["id"] == sid for s in self.queue.to_list()):
+            notify(f"ID {sid} is already in the queue.", "error"); return
+
+        name = input_field("Full Name")
+        if not name:
+            notify("Name cannot be empty.", "error"); return
+
+        print(C.muted("\n  Select Programme:"))
+        program = choose("Programme", self.PROGRAMMES)
+
+        year = input_field("Year of Study [1/2/3/4]", "1")
+        if year not in ("1", "2", "3", "4"):
+            notify("Year must be 1, 2, 3, or 4.", "error"); return
+
+        gpa_raw = input_field("GPA (0.0 – 4.0)", "0.0")
+        try:
+            gpa = round(float(gpa_raw), 2)
+            if not (0.0 <= gpa <= 4.0):
+                raise ValueError
+        except ValueError:
+            notify("Invalid GPA. Using 0.0.", "warn")
+            gpa = 0.0
+
+        student = {
+            "id": sid, "name": name, "program": program,
+            "year": year, "status": "active", "gpa": gpa,
+            "added": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+
+        self.queue.enqueue(student)
+        notify(f"{name} enqueued at position {self.queue.size()}.", "info")
+
+        process = input_field("\n  Process queue now? (y/n)", "y").lower()
+        if process == "y":
+            self._process_queue()
+
+    def _process_queue(self):
+        """Dequeue all pending students into LL / HT / BST."""
+        if self.queue.is_empty():
+            notify("Queue is already empty.", "warn"); return
+        count = 0
+        while not self.queue.is_empty():
+            s = self.queue.dequeue()
+            self._insert_all(s)
+            count += 1
+        notify(f"Processed {count} student(s) from queue into records.", "success")
+
+    def menu_search_student(self):
+        """Search using Hash Table (O(1) avg) with BST fallback."""
+        section("Search Student — Hash Table O(1) · BST Fallback O(log n)")
+        sid = input_field("Enter Student ID").upper()
+        if not sid:
+            notify("No ID entered.", "warn"); return
+
+        # Primary: Hash Table
+        student = self.ht.get(sid)
+        method  = "Hash Table — O(1) average"
+        if not student:
+            # Fallback: BST
+            student = self.bst.find(sid)
+            method  = "BST — O(log n)"
+
+        if student:
+            print(f"\n  {C.success('✓')} Found via {C.bold(method)}\n")
+            rule("·", color=C.muted)
+            fields = [
+                ("ID",         student["id"]),
+                ("Name",       student["name"]),
+                ("Programme",  student["program"]),
+                ("Year",       f"Year {student['year']}"),
+                ("Status",     student["status"]),
+                ("GPA",        f"{student.get('gpa', 0):.2f}"),
+                ("Added",      student.get("added", "—")),
+            ]
+            for label, val in fields:
+                print(f"  {C.muted(f'{label:<12}')} {C.bold(val)}")
+            rule("·", color=C.muted)
+        else:
+            notify(f"No student found with ID: {sid}", "error")
+
+    def menu_update_student(self):
+        """Update a student record (syncs LL, HT, BST)."""
+        section("Update Student Record")
+        sid = input_field("Enter Student ID to update").upper()
+        if not sid:
+            notify("No ID entered.", "warn"); return
+
+        student = self.ht.get(sid)
+        if not student:
+            notify(f"Student {sid} not found.", "error"); return
+
+        print(f"\n  {C.bold('Current record:')}")
+        print_student_row(student)
+        print(C.muted("\n  Press Enter to keep current value.\n"))
+
+        new_name = input_field("Name", student["name"])
+        print(C.muted("  Select new Programme:"))
+        new_prog = choose("Programme", self.PROGRAMMES)
+        new_year = input_field("Year [1/2/3/4]", student["year"])
+        if new_year not in ("1", "2", "3", "4"):
+            new_year = student["year"]
+        print(C.muted("  Status:"))
+        new_status = choose("Status", ["active", "probation", "inactive"])
+        gpa_raw  = input_field("GPA (0.0–4.0)", str(student.get("gpa", 0.0)))
+        try:
+            new_gpa = round(float(gpa_raw), 2)
+            if not (0.0 <= new_gpa <= 4.0):
+                raise ValueError
+        except ValueError:
+            new_gpa = student.get("gpa", 0.0)
+
+        updates = {
+            "name": new_name, "program": new_prog, "year": new_year,
+            "status": new_status, "gpa": new_gpa,
+            "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+        self._update_all(sid, updates)
+        notify(f"Student {sid} updated successfully (LL + HT + BST synced).", "success")
+
+    def menu_delete_student(self):
+        """Delete a student and push to undo stack."""
+        section("Delete Student Record")
+        sid = input_field("Enter Student ID to delete").upper()
+        if not sid:
+            notify("No ID entered.", "warn"); return
+
+        student = self.ht.get(sid)
+        if not student:
+            notify(f"Student {sid} not found.", "error"); return
+
+        print(f"\n  {C.warn('About to delete:')}")
+        print_student_row(student)
+        confirm = input_field("\n  Type the Student ID to confirm deletion").upper()
+        if confirm != sid:
+            notify("Deletion cancelled.", "info"); return
+
+        deleted = self._delete_all(sid)
+        if deleted:
+            notify(f"{deleted['name']} deleted. Pushed to undo stack (depth: {self.stack.size()}).", "warn")
+        else:
+            notify("Delete failed — student not found.", "error")
+
+    def menu_undo_delete(self):
+        """Pop from undo stack and restore the student."""
+        section("Undo Last Delete — Stack (LIFO)")
+        if self.stack.is_empty():
+            notify("Undo stack is empty — nothing to restore.", "warn"); return
+
+        top = self.stack.peek()
+        print(f"\n  {C.info('Top of stack (will be restored):')}")
+        print_student_row(top)
+
+        confirm = input_field("\n  Restore this student? (y/n)", "y").lower()
+        if confirm != "y":
+            notify("Undo cancelled.", "info"); return
+
+        student = self.stack.pop()
+        self._insert_all(student)
+        notify(f"Restored: {student['name']} ({student['id']}) into LL + HT + BST.", "success")
+
+    def menu_display_all(self):
+        """Display all students by traversing the Linked List."""
+        section("All Students — Linked List Traversal (head → tail)")
+        students = self.ll.to_list()
+        if not students:
+            print(C.muted("  No students enrolled yet."))
+        else:
+            print(C.muted(f"  Total enrolled: {len(students)} students\n"))
+            print_table(students)
+        pause()
+
+    def menu_display_sorted(self):
+        """Display students sorted by ID via BST in-order traversal."""
+        section("Students Sorted by ID — BST In-order Traversal O(n)")
+        students = self.bst.inorder()
+        if not students:
+            print(C.muted("  No students in BST."))
+        else:
+            print(C.muted(f"  {len(students)} students sorted by ID\n"))
+            print_table(students)
+        pause()
+
+    def menu_view_queue(self):
+        """Display and manage the registration queue."""
+        section("Registration Queue — FIFO")
+        q = self.queue.to_list()
+        if not q:
+            print(C.muted("  Queue is empty. Use 'Add Student' to enqueue."))
+            pause(); return
+
+        print(C.muted(f"  {len(q)} student(s) waiting in queue\n"))
+        for i, s in enumerate(q):
+            tag = C.sage(" ← FRONT") if i == 0 else C.muted(f" (pos {i+1})")
+            print(f"  {C.bold(s['id']):<16} {s['name']:<24} {C.muted(s['program'][:28])}{tag}")
+
+        print()
+        action = input_field("  [P]rocess all  [N]ext one  [Q]uit", "q").lower()
+        if action == "p":
+            self._process_queue()
+        elif action == "n":
+            s = self.queue.dequeue()
+            if s:
+                self._insert_all(s)
+                notify(f"Processed: {s['name']} ({s['id']})", "success")
+
+    def menu_view_stack(self):
+        """Display the undo stack (top = most recently deleted)."""
+        section("Undo Stack — LIFO (top = most recently deleted)")
+        items = self.stack.to_list()
+        if not items:
+            print(C.muted("  Stack is empty. Delete a student to push here."))
+            pause(); return
+
+        print(C.muted(f"  Depth: {len(items)} record(s)\n"))
+        for i, s in enumerate(items):
+            tag = C.rust(" ← TOP") if i == 0 else ""
+            print(f"  {C.bold(s['id']):<16} {s['name']:<24} {C.muted(s['program'][:28])}{tag}")
+        pause()
+
+    def menu_statistics(self):
+        """Dashboard-style statistics view."""
+        section("System Statistics & Data Structure Summary")
+        all_s = self.ll.to_list()
+        total = len(all_s)
+
+        gpas = [s["gpa"] for s in all_s if s.get("gpa")]
+        avg_gpa = sum(gpas) / len(gpas) if gpas else 0.0
+
+        status_counts = {}
+        prog_counts   = {}
+        year_counts   = {}
+        for s in all_s:
+            status_counts[s.get("status","active")] = status_counts.get(s.get("status","active"), 0) + 1
+            prog_counts[s["program"]]               = prog_counts.get(s["program"], 0) + 1
+            year_counts[f"Year {s['year']}"]        = year_counts.get(f"Year {s['year']}", 0) + 1
+
+        # Overview
+        print(f"\n  {'Metric':<28} {'Value'}")
+        rule("·", color=C.muted)
+        print(f"  {'Total enrolled':<28} {C.bold(str(total))}")
+        print(f"  {'Average GPA':<28} {C.gold(f'{avg_gpa:.2f}')}")
+        print(f"  {'Queue pending':<28} {C.info(str(self.queue.size()))}")
+        print(f"  {'Undo stack depth':<28} {C.warn(str(self.stack.size()))}")
+        print(f"  {'Active programmes':<28} {C.bold(str(len(prog_counts)))}")
+
+        # Status breakdown
+        print(f"\n  {'Status Breakdown':}")
+        rule("·", color=C.muted)
+        for status, count in sorted(status_counts.items()):
+            bar = "█" * count
+            fn  = {"active": C.sage, "probation": C.warn, "inactive": C.muted}.get(status, C.muted)
+            print(f"  {status:<12} {fn(bar)} {count}")
+
+        # Top programmes
+        print(f"\n  {'Programmes by Enrolment':}")
+        rule("·", color=C.muted)
+        for prog, count in sorted(prog_counts.items(), key=lambda x: -x[1]):
+            bar = "█" * count
+            print(f"  {C.muted(prog[:28]):<38} {C.rust(bar)} {count}")
+
+        # Data structure info
+        print(f"\n  {'Data Structure Summary':}")
+        rule("·", color=C.muted)
+        ds_info = [
+            ("Linked List",   f"{len(self.ll)} nodes",         "Primary record storage"),
+            ("Hash Table",    f"{len(self.ht)} entries",       "O(1) avg ID lookup"),
+            ("BST",           f"root={'✓' if self.bst.root else '✗'}",  "O(log n) sorted index"),
+            ("Stack (undo)",  f"depth {self.stack.size()}",    "LIFO undo delete"),
+            ("Queue (reg.)",  f"{self.queue.size()} pending",  "FIFO registration"),
+        ]
+        for name, stat, desc in ds_info:
+            print(f"  {C.bold(name):<22} {C.gold(stat):<18} {C.muted(desc)}")
+
+        pause()
+
+    def menu_ds_justification(self):
+        """Print the data structure justification table."""
+        section("Data Structure Justification")
+        rows = [
+            ("Linked List",  "Primary record storage",    "Dynamic size, O(1) insert, no shifting on remove"),
+            ("Stack",        "Undo last delete",           "LIFO — most-recent delete restored in O(1)"),
+            ("Queue",        "Registration pipeline",      "FIFO — students processed in arrival order"),
+            ("Hash Table",   "Fast ID lookup",             "O(1) avg search/insert/delete by Student ID"),
+            ("BST",          "Sorted secondary index",     "O(log n) search; in-order = sorted by ID"),
+        ]
+        print(f"\n  {'Structure':<16} {'Purpose':<28} {'Justification'}")
+        rule("·", color=C.muted)
+        for ds, purpose, justif in rows:
+            wrapped = textwrap.wrap(justif, 32)
+            print(f"  {C.bold(ds):<25} {C.info(purpose):<37} {C.muted(wrapped[0])}")
+            for line in wrapped[1:]:
+                print(f"  {'':<25} {'':<37} {C.muted(line)}")
+            print()
+
+        print(f"\n  {C.bold('Big-O Complexity:')}")
+        rule("·", color=C.muted)
+        print(f"  {'Operation':<18} {'Linked List':<14} {'Hash Table':<14} {'BST':<14} {'Stack/Queue'}")
+        rule("·", color=C.muted)
+        ops = [
+            ("Insert",       "O(1)",  "O(1) avg", "O(log n)", "O(1)"),
+            ("Search by ID", "O(n)",  "O(1) avg", "O(log n)", "—"),
+            ("Delete",       "O(n)",  "O(1) avg", "O(log n)", "O(1)"),
+            ("Display All",  "O(n)",  "O(n)",     "O(n)",     "O(n)"),
+            ("Undo/Enqueue", "—",     "—",        "—",        "O(1)"),
+        ]
+        for row in ops:
+            op, ll_, ht_, bst_, sq_ = row
+            print(f"  {op:<18} {C.gold(ll_):<22} {C.sage(ht_):<22} {C.sky(bst_):<22} {C.muted(sq_)}")
+        pause()
+
+    # ─────────────────────────────────────────────────────────
+    #  MAIN MENU LOOP
+    # ─────────────────────────────────────────────────────────
+    def run(self):
+        MENU = [
+            ("1", "Add Student",                 self.menu_add_student),
+            ("2", "Search Student",              self.menu_search_student),
+            ("3", "Update Student",              self.menu_update_student),
+            ("4", "Delete Student",              self.menu_delete_student),
+            ("5", "Undo Last Delete  (Stack)",   self.menu_undo_delete),
+            ("6", "Display All Students (LL)",   self.menu_display_all),
+            ("7", "Display Sorted by ID (BST)",  self.menu_display_sorted),
+            ("8", "View Queue",                  self.menu_view_queue),
+            ("9", "View Undo Stack",             self.menu_view_stack),
+            ("S", "Statistics Dashboard",        self.menu_statistics),
+            ("D", "DS Justification",            self.menu_ds_justification),
+            ("Q", "Quit",                        None),
+        ]
+        dispatch = {key: fn for key, _, fn in MENU}
+
+        while True:
+            banner()
+
+            # Status line
+            print(
+                f"  {C.muted('Enrolled:')} {C.bold(str(len(self.ll)))}   "
+                f"{C.muted('Queue:')} {C.info(str(self.queue.size()))}   "
+                f"{C.muted('Undo stack:')} {C.warn(str(self.stack.size()))}\n"
+            )
+
+            # Menu options
+            for key, label, _ in MENU:
+                spacer = "  " if key.isdigit() else " "
+                if key == "Q":
+                    print()
+                kfmt = C.rust(f"[{key}]") if key == "Q" else C.gold(f"[{key}]")
+                print(f"  {kfmt}{spacer}{label}")
+
+            print()
+            choice = input(f"  {C.muted('›')} Choose an option: ").strip().upper()
+
+            if choice == "Q":
+                banner()
+                print(C.sage(f"\n  {'Goodbye! All data structures have been cleared.':^{WIDTH}}\n"))
+                sys.exit(0)
+
+            fn = dispatch.get(choice)
+            if fn:
+                banner()
+                fn()
+            else:
+                notify("Invalid option. Please try again.", "error")
+                pause("Press Enter to return to menu...")
+
+
+# ─────────────────────────────────────────────────────────────
+#  ENTRY POINT
+# ─────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    try:
+        rms = StudentRMS()
+        rms.run()
+    except KeyboardInterrupt:
+        print(C.muted("\n\n  Interrupted. Goodbye.\n"))
+        sys.exit(0)

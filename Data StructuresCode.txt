@@ -1,0 +1,573 @@
+"""
+Student Record Management System
+=================================
+Data Structures Used:
+  1. Hash Table  — O(1) average-case lookup/insert/delete by Student ID
+  2. Linked List — Dynamic sequential storage of all student records
+  3. Stack        — Undo last delete operation (LIFO)
+  4. Queue        — Process pending registration requests (FIFO)
+  5. Binary Search Tree (BST) — Sorted traversal of students by ID
+"""
+
+from collections import deque
+import datetime
+
+
+# ─────────────────────────────────────────────
+# STUDENT RECORD
+# ─────────────────────────────────────────────
+class Student:
+    def __init__(self, student_id: str, name: str, program: str, year: int):
+        self.student_id = student_id.upper()
+        self.name = name
+        self.program = program
+        self.year = year
+        self.enrolled_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def __repr__(self):
+        return (f"Student(id={self.student_id}, name={self.name}, "
+                f"program={self.program}, year={self.year})")
+
+    def display(self):
+        print(f"  {'ID':<12}: {self.student_id}")
+        print(f"  {'Name':<12}: {self.name}")
+        print(f"  {'Program':<12}: {self.program}")
+        print(f"  {'Year':<12}: {self.year}")
+        print(f"  {'Enrolled':<12}: {self.enrolled_at}")
+
+
+# ─────────────────────────────────────────────
+# DATA STRUCTURE 1 — LINKED LIST
+# Purpose: Dynamic sequential storage of records;
+#          no fixed size needed, cheap insertions/deletions.
+# ─────────────────────────────────────────────
+class _LLNode:
+    def __init__(self, student: Student):
+        self.student = student
+        self.next = None
+
+
+class LinkedList:
+    """Doubly-chained singly linked list of student records."""
+
+    def __init__(self):
+        self.head = None
+        self._size = 0
+
+    def append(self, student: Student):
+        node = _LLNode(student)
+        if self.head is None:
+            self.head = node
+        else:
+            cur = self.head
+            while cur.next:
+                cur = cur.next
+            cur.next = node
+        self._size += 1
+
+    def remove(self, student_id: str) -> bool:
+        prev, cur = None, self.head
+        while cur:
+            if cur.student.student_id == student_id.upper():
+                if prev:
+                    prev.next = cur.next
+                else:
+                    self.head = cur.next
+                self._size -= 1
+                return True
+            prev, cur = cur, cur.next
+        return False
+
+    def update(self, student_id: str, **kwargs) -> bool:
+        cur = self.head
+        while cur:
+            if cur.student.student_id == student_id.upper():
+                s = cur.student
+                if "name" in kwargs:
+                    s.name = kwargs["name"]
+                if "program" in kwargs:
+                    s.program = kwargs["program"]
+                if "year" in kwargs:
+                    s.year = kwargs["year"]
+                return True
+            cur = cur.next
+        return False
+
+    def all_students(self) -> list:
+        result, cur = [], self.head
+        while cur:
+            result.append(cur.student)
+            cur = cur.next
+        return result
+
+    def __len__(self):
+        return self._size
+
+
+# ─────────────────────────────────────────────
+# DATA STRUCTURE 2 — HASH TABLE
+# Purpose: O(1) average search, insert, and delete by Student ID.
+#          Ideal for large datasets requiring fast lookups.
+# ─────────────────────────────────────────────
+class HashTable:
+    """Separate-chaining hash table keyed on student_id."""
+
+    def __init__(self, capacity: int = 64):
+        self._cap = capacity
+        self._buckets: list = [[] for _ in range(capacity)]
+        self._size = 0
+
+    def _hash(self, key: str) -> int:
+        return sum(ord(c) * (31 ** i) for i, c in enumerate(key)) % self._cap
+
+    def insert(self, student: Student):
+        idx = self._hash(student.student_id)
+        bucket = self._buckets[idx]
+        for i, (k, _) in enumerate(bucket):
+            if k == student.student_id:
+                bucket[i] = (student.student_id, student)
+                return
+        bucket.append((student.student_id, student))
+        self._size += 1
+
+    def search(self, student_id: str):
+        idx = self._hash(student_id.upper())
+        for k, v in self._buckets[idx]:
+            if k == student_id.upper():
+                return v
+        return None
+
+    def delete(self, student_id: str) -> bool:
+        idx = self._hash(student_id.upper())
+        bucket = self._buckets[idx]
+        for i, (k, _) in enumerate(bucket):
+            if k == student_id.upper():
+                del bucket[i]
+                self._size -= 1
+                return True
+        return False
+
+    def __len__(self):
+        return self._size
+
+
+# ─────────────────────────────────────────────
+# DATA STRUCTURE 3 — STACK  (undo delete)
+# Purpose: LIFO — lets the user undo the most recent deletion.
+# ─────────────────────────────────────────────
+class UndoStack:
+    def __init__(self):
+        self._stack = []
+
+    def push(self, student: Student):
+        self._stack.append(student)
+
+    def pop(self):
+        return self._stack.pop() if self._stack else None
+
+    def is_empty(self):
+        return len(self._stack) == 0
+
+    def peek(self):
+        return self._stack[-1] if self._stack else None
+
+    def __len__(self):
+        return len(self._stack)
+
+
+# ─────────────────────────────────────────────
+# DATA STRUCTURE 4 — QUEUE  (registration requests)
+# Purpose: FIFO — ensures students are registered in arrival order.
+# ─────────────────────────────────────────────
+class RegistrationQueue:
+    def __init__(self):
+        self._queue = deque()
+
+    def enqueue(self, student: Student):
+        self._queue.append(student)
+
+    def dequeue(self):
+        return self._queue.popleft() if self._queue else None
+
+    def is_empty(self):
+        return len(self._queue) == 0
+
+    def peek(self):
+        return self._queue[0] if self._queue else None
+
+    def __len__(self):
+        return len(self._queue)
+
+
+# ─────────────────────────────────────────────
+# DATA STRUCTURE 5 — BINARY SEARCH TREE
+# Purpose: Maintains students in sorted order by ID;
+#          in-order traversal yields a sorted list efficiently.
+# ─────────────────────────────────────────────
+class _BSTNode:
+    def __init__(self, student: Student):
+        self.student = student
+        self.left = None
+        self.right = None
+
+
+class BST:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, student: Student):
+        self.root = self._insert(self.root, student)
+
+    def _insert(self, node, student):
+        if node is None:
+            return _BSTNode(student)
+        if student.student_id < node.student.student_id:
+            node.left = self._insert(node.left, student)
+        elif student.student_id > node.student.student_id:
+            node.right = self._insert(node.right, student)
+        else:                        # update existing
+            node.student = student
+        return node
+
+    def delete(self, student_id: str):
+        self.root = self._delete(self.root, student_id.upper())
+
+    def _delete(self, node, sid):
+        if node is None:
+            return None
+        if sid < node.student.student_id:
+            node.left = self._delete(node.left, sid)
+        elif sid > node.student.student_id:
+            node.right = self._delete(node.right, sid)
+        else:
+            if node.left is None:
+                return node.right
+            if node.right is None:
+                return node.left
+            # replace with in-order successor
+            successor = node.right
+            while successor.left:
+                successor = successor.left
+            node.student = successor.student
+            node.right = self._delete(node.right, successor.student.student_id)
+        return node
+
+    def inorder(self) -> list:
+        result = []
+        self._inorder(self.root, result)
+        return result
+
+    def _inorder(self, node, result):
+        if node:
+            self._inorder(node.left, result)
+            result.append(node.student)
+            self._inorder(node.right, result)
+
+
+# ─────────────────────────────────────────────
+# MANAGEMENT SYSTEM — ties all structures together
+# ─────────────────────────────────────────────
+class StudentRecordSystem:
+    """
+    Coordinates all five data structures:
+      • Hash Table  → primary fast-access store
+      • Linked List → sequential iteration
+      • BST         → sorted display
+      • Stack       → undo last delete
+      • Queue       → pending registrations
+    """
+
+    def __init__(self):
+        self._hash_table = HashTable()
+        self._linked_list = LinkedList()
+        self._bst = BST()
+        self._undo_stack = UndoStack()
+        self._reg_queue = RegistrationQueue()
+
+    # ── Internal helpers ──────────────────────
+    def _sync_add(self, student: Student):
+        self._hash_table.insert(student)
+        self._linked_list.append(student)
+        self._bst.insert(student)
+
+    def _sync_remove(self, student_id: str):
+        self._hash_table.delete(student_id)
+        self._linked_list.remove(student_id)
+        self._bst.delete(student_id)
+
+    # ── 1. Add Student ────────────────────────
+    def add_student(self, student_id: str, name: str,
+                    program: str, year: int) -> bool:
+        sid = student_id.upper()
+        if self._hash_table.search(sid):
+            print(f"  [!] Student ID '{sid}' already exists.")
+            return False
+        s = Student(sid, name, program, year)
+        self._sync_add(s)
+        print(f"  [+] Student '{sid}' added successfully.")
+        return True
+
+    # ── 2. Search Student ─────────────────────
+    def search_student(self, student_id: str):
+        s = self._hash_table.search(student_id)
+        if s:
+            print(f"  [✓] Record found:")
+            s.display()
+        else:
+            print(f"  [!] No student with ID '{student_id.upper()}' found.")
+        return s
+
+    # ── 3. Update Student ─────────────────────
+    def update_student(self, student_id: str, **kwargs) -> bool:
+        sid = student_id.upper()
+        s = self._hash_table.search(sid)
+        if not s:
+            print(f"  [!] Student '{sid}' not found.")
+            return False
+        # apply changes across all structures
+        if "name" in kwargs:    s.name    = kwargs["name"]
+        if "program" in kwargs: s.program = kwargs["program"]
+        if "year" in kwargs:    s.year    = int(kwargs["year"])
+        self._hash_table.insert(s)   # overwrite
+        self._linked_list.update(sid, **kwargs)
+        self._bst.insert(s)          # BST update via re-insert
+        print(f"  [✓] Student '{sid}' updated successfully.")
+        return True
+
+    # ── 4. Delete Student ─────────────────────
+    def delete_student(self, student_id: str) -> bool:
+        sid = student_id.upper()
+        s = self._hash_table.search(sid)
+        if not s:
+            print(f"  [!] Student '{sid}' not found.")
+            return False
+        self._undo_stack.push(s)      # save for undo
+        self._sync_remove(sid)
+        print(f"  [-] Student '{sid}' deleted. (Undo available)")
+        return True
+
+    # ── 5. Undo Last Delete ───────────────────
+    def undo_delete(self) -> bool:
+        s = self._undo_stack.pop()
+        if s is None:
+            print("  [!] Nothing to undo.")
+            return False
+        if self._hash_table.search(s.student_id):
+            print(f"  [!] ID '{s.student_id}' already exists; cannot restore.")
+            return False
+        self._sync_add(s)
+        print(f"  [↩] Restored student '{s.student_id}'.")
+        return True
+
+    # ── 6. Enqueue Registration Request ───────
+    def enqueue_registration(self, student_id: str, name: str,
+                              program: str, year: int):
+        s = Student(student_id, name, program, year)
+        self._reg_queue.enqueue(s)
+        print(f"  [Q] Registration request queued for '{s.student_id}'.")
+
+    # ── 7. Process Next Registration ──────────
+    def process_next_registration(self) -> bool:
+        s = self._reg_queue.dequeue()
+        if s is None:
+            print("  [!] Registration queue is empty.")
+            return False
+        if self._hash_table.search(s.student_id):
+            print(f"  [!] '{s.student_id}' already exists; request skipped.")
+            return False
+        self._sync_add(s)
+        print(f"  [✓] Processed registration for '{s.student_id}'.")
+        return True
+
+    def process_all_registrations(self):
+        if self._reg_queue.is_empty():
+            print("  [!] Queue is empty.")
+            return
+        count = 0
+        while not self._reg_queue.is_empty():
+            if self.process_next_registration():
+                count += 1
+        print(f"  [✓] Processed {count} registration(s).")
+
+    # ── 8. Display All Students ───────────────
+    def display_all(self, sorted_by_id: bool = True):
+        if len(self._hash_table) == 0:
+            print("  [!] No students in the system.")
+            return
+        students = self._bst.inorder() if sorted_by_id else self._linked_list.all_students()
+        order_label = "sorted by ID" if sorted_by_id else "insertion order"
+        print(f"\n  ═══ All Students ({order_label}) — {len(students)} record(s) ═══")
+        for i, s in enumerate(students, 1):
+            print(f"\n  [{i}]")
+            s.display()
+        print()
+
+    # ── 9. Statistics ─────────────────────────
+    def stats(self):
+        students = self._linked_list.all_students()
+        total = len(students)
+        programs = {}
+        year_dist = {}
+        for s in students:
+            programs[s.program] = programs.get(s.program, 0) + 1
+            year_dist[s.year]   = year_dist.get(s.year, 0) + 1
+
+        print("\n  ══ System Statistics ══")
+        print(f"  Total Students   : {total}")
+        print(f"  Pending (Queue)  : {len(self._reg_queue)}")
+        print(f"  Undo Stack Depth : {len(self._undo_stack)}")
+        if programs:
+            print("  By Program:")
+            for prog, cnt in sorted(programs.items()):
+                print(f"    {prog:<30} {cnt}")
+        if year_dist:
+            print("  By Year:")
+            for yr, cnt in sorted(year_dist.items()):
+                print(f"    Year {yr:<26} {cnt}")
+
+
+# ─────────────────────────────────────────────
+# INTERACTIVE CLI
+# ─────────────────────────────────────────────
+def _separator(title=""):
+    width = 55
+    if title:
+        pad = (width - len(title) - 2) // 2
+        print("\n" + "─" * pad + f" {title} " + "─" * pad)
+    else:
+        print("\n" + "─" * width)
+
+
+def _prompt(label: str, required=True) -> str:
+    while True:
+        val = input(f"  {label}: ").strip()
+        if val or not required:
+            return val
+        print("  [!] This field is required.")
+
+
+def _prompt_year() -> int:
+    while True:
+        val = input("  Year (1–6): ").strip()
+        if val.isdigit() and 1 <= int(val) <= 6:
+            return int(val)
+        print("  [!] Please enter a number between 1 and 6.")
+
+
+def main():
+    sys_ref = StudentRecordSystem()
+
+    # ── seed some demo data ───────────────────
+    demo = [
+        ("CS001", "Alice Banda",    "Computer Science",  2),
+        ("CS002", "Brian Phiri",    "Computer Science",  3),
+        ("EE003", "Carol Tembo",    "Electrical Eng.",   1),
+        ("BU004", "David Mwale",    "Business Admin",    4),
+        ("ME005", "Eve Zulu",       "Mechanical Eng.",   2),
+    ]
+    for sid, name, prog, yr in demo:
+        sys_ref.add_student(sid, name, prog, yr)
+
+    MENU = """
+╔══════════════════════════════════════════╗
+║   STUDENT RECORD MANAGEMENT SYSTEM       ║
+╠══════════════════════════════════════════╣
+║  1. Add Student                          ║
+║  2. Search Student by ID                 ║
+║  3. Update Student                       ║
+║  4. Delete Student                       ║
+║  5. Undo Last Delete                     ║
+║  6. Display All Students (sorted)        ║
+║  7. Display All Students (insert order)  ║
+║  8. Queue Registration Request           ║
+║  9. Process Next Registration            ║
+║ 10. Process ALL Registrations            ║
+║ 11. View Statistics                      ║
+║  0. Exit                                 ║
+╚══════════════════════════════════════════╝"""
+
+    while True:
+        print(MENU)
+        choice = input("  Select option: ").strip()
+
+        if choice == "1":
+            _separator("Add Student")
+            sid  = _prompt("Student ID")
+            name = _prompt("Full Name")
+            prog = _prompt("Program")
+            year = _prompt_year()
+            sys_ref.add_student(sid, name, prog, year)
+
+        elif choice == "2":
+            _separator("Search Student")
+            sid = _prompt("Student ID")
+            sys_ref.search_student(sid)
+
+        elif choice == "3":
+            _separator("Update Student")
+            sid = _prompt("Student ID to update")
+            s = sys_ref.search_student(sid)
+            if s:
+                print("  (Press ENTER to keep current value)")
+                new_name = _prompt(f"Name [{s.name}]", required=False)
+                new_prog = _prompt(f"Program [{s.program}]", required=False)
+                new_year = input(f"  Year [{s.year}]: ").strip()
+                updates = {}
+                if new_name: updates["name"]    = new_name
+                if new_prog: updates["program"] = new_prog
+                if new_year and new_year.isdigit(): updates["year"] = int(new_year)
+                if updates:
+                    sys_ref.update_student(sid, **updates)
+                else:
+                    print("  [i] No changes made.")
+
+        elif choice == "4":
+            _separator("Delete Student")
+            sid = _prompt("Student ID to delete")
+            confirm = input(f"  Delete '{sid.upper()}'? (yes/no): ").strip().lower()
+            if confirm in ("yes", "y"):
+                sys_ref.delete_student(sid)
+            else:
+                print("  [i] Deletion cancelled.")
+
+        elif choice == "5":
+            _separator("Undo Delete")
+            sys_ref.undo_delete()
+
+        elif choice == "6":
+            _separator("All Students — sorted by ID")
+            sys_ref.display_all(sorted_by_id=True)
+
+        elif choice == "7":
+            _separator("All Students — insertion order")
+            sys_ref.display_all(sorted_by_id=False)
+
+        elif choice == "8":
+            _separator("Queue Registration")
+            sid  = _prompt("Student ID")
+            name = _prompt("Full Name")
+            prog = _prompt("Program")
+            year = _prompt_year()
+            sys_ref.enqueue_registration(sid, name, prog, year)
+
+        elif choice == "9":
+            _separator("Process Next Registration")
+            sys_ref.process_next_registration()
+
+        elif choice == "10":
+            _separator("Process All Registrations")
+            sys_ref.process_all_registrations()
+
+        elif choice == "11":
+            sys_ref.stats()
+
+        elif choice == "0":
+            print("\n  Goodbye!\n")
+            break
+
+        else:
+            print("  [!] Invalid option. Please try again.")
+
+
+if __name__ == "__main__":
+    main()

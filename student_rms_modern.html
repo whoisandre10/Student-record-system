@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlmaRMS — Student Record Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #faf8f4;
+    --ink: #1a1714;
+    --muted: #8c8680;
+    --border: #e8e3db;
+    --card: #ffffff;
+    --rust: #c2522a;
+    --gold: #d4a84b;
+    --sage: #4a7c6a;
+    --sky: #3b6fa0;
+    --font-head: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --sidebar-w: 224px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --cream: #1c1a17;
+      --ink: #f0ece4;
+      --muted: #8c8a84;
+      --border: #2e2c28;
+      --card: #232119;
+    }
+  }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ──────────────── LAYOUT ──────────────── */
+  .dash { display: flex; min-height: 100vh; }
+
+  /* ──────────────── SIDEBAR ──────────────── */
+  .sb {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--ink);
+    color: #f0ece4;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    z-index: 50;
+  }
+  .sb-logo {
+    padding: 28px 24px 22px;
+    font-family: var(--font-head);
+    font-size: 22px;
+    letter-spacing: -0.3px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+  }
+  .sb-logo span { color: var(--gold); font-style: italic; }
+  .sb-logo small {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(240,236,228,.4);
+    margin-top: 3px;
+  }
+  .sb-section {
+    padding: 18px 24px 5px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(240,236,228,.35);
+  }
+  .sb-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 24px;
+    cursor: pointer;
+    color: rgba(240,236,228,.6);
+    font-size: 13px;
+    font-weight: 400;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+    font-family: var(--font-body);
+  }
+  .sb-item:hover { color: #f0ece4; background: rgba(255,255,255,.07); }
+  .sb-item.act   { color: #f0ece4; border-left-color: var(--gold); background: rgba(255,255,255,.09); }
+  .sb-item svg   { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
+  .sb-ds {
+    margin: 14px 16px 0;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .sb-ds-title {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(240,236,228,.35);
+    margin-bottom: 8px;
+  }
+  .ds-pill {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 1px solid;
+    margin: 2px 2px 0 0;
+    font-family: var(--font-body);
+  }
+  .ds-pill.ll  { border-color: rgba(212,168,75,.5);  color: var(--gold); }
+  .ds-pill.stk { border-color: rgba(194,82,42,.5);   color: var(--rust); }
+  .ds-pill.que { border-color: rgba(74,124,106,.5);  color: var(--sage); }
+  .ds-pill.ht  { border-color: rgba(59,111,160,.5);  color: var(--sky); }
+  .ds-pill.bst { border-color: rgba(240,236,228,.25);color: rgba(240,236,228,.6); }
+  .sb-bottom {
+    margin-top: auto;
+    padding: 18px 20px;
+    border-top: 1px solid rgba(255,255,255,.1);
+  }
+  .sb-user { display: flex; align-items: center; gap: 10px; }
+  .sb-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--rust);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; color: #fff; flex-shrink: 0;
+  }
+  .sb-user-name  { font-size: 13px; font-weight: 500; color: #f0ece4; }
+  .sb-user-role  { font-size: 10px; color: rgba(240,236,228,.45); }
+
+  /* ──────────────── MAIN ──────────────── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    min-width: 0;
+  }
+
+  /* ──────────────── SECTIONS ──────────────── */
+  .view { display: none; flex-direction: column; gap: 24px; }
+  .view.active { display: flex; }
+
+  /* ──────────────── TOP BAR ──────────────── */
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .page-title {
+    font-family: var(--font-head);
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .page-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .top-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+  /* ──────────────── BUTTONS ──────────────── */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--ink);
+    font-family: var(--font-body);
+    transition: all .15s;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .btn.primary:hover { opacity: .88; }
+  .btn.danger  { background: rgba(194,82,42,.08); color: var(--rust); border-color: rgba(194,82,42,.25); }
+  .btn.danger:hover { background: rgba(194,82,42,.15); }
+  .btn.sage    { background: rgba(74,124,106,.08); color: var(--sage); border-color: rgba(74,124,106,.25); }
+  .btn.sage:hover { background: rgba(74,124,106,.15); }
+  .btn.gold    { background: rgba(212,168,75,.08); color: var(--gold); border-color: rgba(212,168,75,.25); }
+  .btn.gold:hover { background: rgba(212,168,75,.15); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* ──────────────── CARDS ──────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .card-sub { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+
+  /* ──────────────── STAT ROW ──────────────── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .stat-card.a::before { background: var(--rust); }
+  .stat-card.b::before { background: var(--gold); }
+  .stat-card.c::before { background: var(--sage); }
+  .stat-card.d::before { background: var(--sky);  }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-val   { font-family: var(--font-head); font-size: 36px; letter-spacing: -1px; line-height: 1; }
+  .stat-delta { font-size: 11px; margin-top: 6px; }
+  .stat-delta.up { color: var(--sage); }
+  .stat-delta.dn { color: var(--rust); }
+
+  /* ──────────────── TWO COL ──────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+
+  /* ──────────────── BAR CHART ──────────────── */
+  .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 140px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+  .bar { border-radius: 4px 4px 0 0; flex: 1; cursor: pointer; transition: opacity .15s; }
+  .bar:hover { opacity: .75; }
+  .bar-month { font-size: 10px; color: var(--muted); }
+  .legend { display: flex; gap: 14px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ──────────────── PROGRESS BARS ──────────────── */
+  .prog-list { display: flex; flex-direction: column; gap: 13px; }
+  .prog-item { display: flex; flex-direction: column; gap: 5px; }
+  .prog-row  { display: flex; justify-content: space-between; align-items: center; }
+  .prog-name { font-size: 12px; font-weight: 500; }
+  .prog-pct  { font-size: 12px; color: var(--muted); }
+  .prog-bar-bg   { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .prog-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* ──────────────── TABLE ──────────────── */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tbl-head {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 0.8fr 90px 60px;
+    padding: 11px 20px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tbl-row {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 0.8fr 90px 60px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    cursor: pointer;
+    transition: background .1s;
+    background: var(--card);
+  }
+  .tbl-row:last-child { border-bottom: none; }
+  .tbl-row:hover { background: var(--cream); }
+  .stud-name-cell { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 13px; }
+  .mini-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; flex-shrink: 0;
+  }
+  .stud-id    { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .tbl-cell   { font-size: 12px; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .badge.active    { background: rgba(74,124,106,.1); color: var(--sage); }
+  .badge.probation { background: rgba(194,82,42,.1);  color: var(--rust); }
+  .badge.inactive  { background: rgba(140,134,128,.1);color: var(--muted); }
+  .gpa-chip { font-size: 12px; font-weight: 500; text-align: right; }
+  .gpa-hi { color: var(--sage); }
+  .gpa-md { color: var(--gold); }
+  .gpa-lo { color: var(--rust); }
+  .empty-state { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* ──────────────── FORM ──────────────── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+  input, select {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 10px 13px;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--rust); }
+  select option { background: var(--cream); }
+
+  /* ──────────────── NOTIFICATION ──────────────── */
+  #notif {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 999;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 18px;
+    font-size: 12px;
+    min-width: 220px;
+    transform: translateX(120%);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  }
+  #notif.show { transform: translateX(0); }
+  #notif.success { border-left: 3px solid var(--sage); }
+  #notif.error   { border-left: 3px solid var(--rust); }
+  #notif.info    { border-left: 3px solid var(--sky);  }
+  #notif.warn    { border-left: 3px solid var(--gold); }
+
+  /* ──────────────── MODAL ──────────────── */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(26,23,20,.6);
+    backdrop-filter: blur(3px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    width: 440px;
+    max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  }
+  .modal-title {
+    font-family: var(--font-head);
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* ──────────────── QUEUE & STACK ──────────────── */
+  .ds-list { display: flex; flex-direction: column; gap: 8px; }
+  .ds-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .ds-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; flex-shrink: 0;
+  }
+  .q-num  { background: rgba(74,124,106,.1); color: var(--sage); }
+  .s-num  { background: rgba(194,82,42,.1);  color: var(--rust); }
+  .s-top  { border-color: rgba(194,82,42,.3); background: rgba(194,82,42,.04); }
+  .ds-tag { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; margin-left: auto; color: var(--muted); }
+
+  /* ──────────────── SEARCH RESULT ──────────────── */
+  .result-box { display: none; border-radius: 10px; padding: 18px; font-size: 13px; margin-top: 16px; }
+  .result-box.found    { display: block; border: 1px solid rgba(74,124,106,.3); background: rgba(74,124,106,.05); }
+  .result-box.not-found{ display: block; border: 1px solid rgba(194,82,42,.3);  background: rgba(194,82,42,.05); color: var(--rust); }
+  .result-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+  .result-row .rl { color: var(--muted); min-width: 80px; }
+
+  /* ──────────────── DS INFO TABLE ──────────────── */
+  .ds-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .ds-info-card {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .ds-info-card h4 { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+  .ds-info-card p  { font-size: 12px; color: var(--muted); line-height: 1.65; }
+  .ds-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  table.complexity { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  table.complexity th { text-align: left; padding: 8px 12px; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 400; }
+  table.complexity td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  table.complexity tr:last-child td { border-bottom: none; }
+  table.complexity tr:hover td { background: var(--cream); }
+
+  /* ──────────────── RESPONSIVE ──────────────── */
+  @media (max-width: 900px) {
+    :root { --sidebar-w: 0px; }
+    .sb { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .two-col  { grid-template-columns: 1fr; }
+    .tbl-head,
+    .tbl-row  { grid-template-columns: 1.5fr 1fr 80px 50px; }
+    .tbl-head > div:nth-child(3),
+    .tbl-row > div:nth-child(3) { display: none; }
+    .form-grid { grid-template-columns: 1fr; }
+    .ds-info-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Notification Toast -->
+<div id="notif"><span id="notif-icon">✓</span><span id="notif-msg"></span></div>
+
+<!-- Edit Modal -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Update Student Record</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Student ID</label>
+        <input id="eId" disabled style="opacity:.5">
+      </div>
+      <div class="field">
+        <label>Year of Study</label>
+        <select id="eYear">
+          <option value="1">Year 1</option>
+          <option value="2">Year 2</option>
+          <option value="3">Year 3</option>
+          <option value="4">Year 4</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Full Name</label>
+        <input id="eName" placeholder="Full name">
+      </div>
+      <div class="field full">
+        <label>Programme</label>
+        <select id="eProgram">
+          <option>Computer Science</option>
+          <option>Information Technology</option>
+          <option>Electrical Engineering</option>
+          <option>Business Administration</option>
+          <option>Mathematics</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Status</label>
+        <select id="eStatus">
+          <option value="active">Active</option>
+          <option value="probation">Probation</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="dash">
+
+  <!-- Sidebar -->
+  <nav class="sb">
+    <div class="sb-logo">
+      Alma<span>RMS</span>
+      <small>Student Record System</small>
+    </div>
+
+    <div class="sb-section">Navigation</div>
+    <button class="sb-item act" id="nav-dashboard" onclick="show('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="sb-item" id="nav-add" onclick="show('add')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Add Student
+    </button>
+    <button class="sb-item" id="nav-search" onclick="show('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </button>
+    <button class="sb-item" id="nav-records" onclick="show('records')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      All Records
+    </button>
+
+    <div class="sb-section">Data Structures</div>
+    <button class="sb-item" id="nav-queue" onclick="show('queue')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="9 18 15 12 9 6"/></svg>
+      Queue (FIFO)
+    </button>
+    <button class="sb-item" id="nav-stack" onclick="show('stack')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      Undo Stack
+    </button>
+    <button class="sb-item" id="nav-info" onclick="show('info')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      DS Justification
+    </button>
+
+    <div class="sb-ds">
+      <div class="sb-ds-title">Active structures</div>
+      <span class="ds-pill ll">Linked List</span>
+      <span class="ds-pill stk">Stack</span>
+      <span class="ds-pill que">Queue</span>
+      <span class="ds-pill ht">Hash Table</span>
+      <span class="ds-pill bst">BST</span>
+    </div>
+
+    <div class="sb-bottom">
+      <div class="sb-user">
+        <div class="sb-avatar">RK</div>
+        <div>
+          <div class="sb-user-name">Dr. R. Kamau</div>
+          <div class="sb-user-role">Registrar</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ── VIEW: DASHBOARD ── -->
+    <div class="view active" id="view-dashboard">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Student Overview</div>
+          <div class="page-sub">Academic Year 2025–2026 · Semester 2</div>
+        </div>
+        <div class="top-actions">
+          <button class="btn" onclick="show('records')">View All Records</button>
+          <button class="btn primary" onclick="show('add')">+ Add Student</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card a">
+          <div class="stat-label">Total Enrolled</div>
+          <div class="stat-val" id="stat-total">0</div>
+          <div class="stat-delta up" id="stat-delta-total">—</div>
+        </div>
+        <div class="stat-card b">
+          <div class="stat-label">Queue Pending</div>
+          <div class="stat-val" id="stat-queue">0</div>
+          <div class="stat-delta" id="stat-delta-queue">Awaiting processing</div>
+        </div>
+        <div class="stat-card c">
+          <div class="stat-label">Avg. GPA</div>
+          <div class="stat-val" id="stat-gpa">—</div>
+          <div class="stat-delta up">Across all students</div>
+        </div>
+        <div class="stat-card d">
+          <div class="stat-label">Undo Stack</div>
+          <div class="stat-val" id="stat-stack">0</div>
+          <div class="stat-delta">Deleted records</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Enrolment by Month</div>
+              <div class="card-sub">New registrations this academic year</div>
+            </div>
+            <div class="legend">
+              <div class="leg-item"><div class="leg-dot" style="background:var(--rust)"></div>New</div>
+              <div class="leg-item"><div class="leg-dot" style="background:var(--border)"></div>Left</div>
+            </div>
+          </div>
+          <div class="bar-chart" id="barChart"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Programmes</div>
+              <div class="card-sub">Enrolment share by programme</div>
+            </div>
+          </div>
+          <div class="prog-list" id="progList"></div>
+        </div>
+      </div>
+
+      <!-- Recent -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-family:var(--font-head);font-size:18px;font-weight:400;letter-spacing:-0.3px">Recent Students</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Last 5 records from Linked List</div>
+          </div>
+          <button class="btn" onclick="show('records')" style="font-size:11px">View all →</button>
+        </div>
+        <div class="table-wrap" id="dash-table"></div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: ADD ── -->
+    <div class="view" id="view-add">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Add Student</div>
+          <div class="page-sub">New students are enqueued first, then inserted into all data structures</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Student Information</div>
+        <div class="card-sub">Fill in the details below and click Enqueue</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Student ID</label>
+            <input id="fId" placeholder="e.g. STU-010" maxlength="20">
+          </div>
+          <div class="field">
+            <label>Year of Study</label>
+            <select id="fYear">
+              <option value="1">Year 1</option>
+              <option value="2">Year 2</option>
+              <option value="3">Year 3</option>
+              <option value="4">Year 4</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Full Name</label>
+            <input id="fName" placeholder="Enter full name">
+          </div>
+          <div class="field full">
+            <label>Programme</label>
+            <select id="fProgram">
+              <option>Computer Science</option>
+              <option>Information Technology</option>
+              <option>Electrical Engineering</option>
+              <option>Business Administration</option>
+              <option>Mathematics</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="enqueueStudent()">↦ Enqueue Student</button>
+          <button class="btn sage" onclick="processAll()">▷ Process All Queue</button>
+          <button class="btn" onclick="processOne()">▷ Process Next</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Registration Queue</div>
+        <div class="card-sub">FIFO — students waiting to be added to the main records</div>
+        <div id="queue-add-preview"></div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: SEARCH ── -->
+    <div class="view" id="view-search">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Search Student</div>
+          <div class="page-sub">O(1) average lookup via Hash Table · BST fallback O(log n)</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:10px">
+          <input id="searchInput" placeholder="Enter Student ID (e.g. STU-001)" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn primary" onclick="doSearch()">Search</button>
+        </div>
+        <div class="result-box" id="searchResult"></div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: ALL RECORDS ── -->
+    <div class="view" id="view-records">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">All Records</div>
+          <div class="page-sub">Traversing Linked List · <span id="rec-count">0</span> students enrolled</div>
+        </div>
+        <div class="top-actions">
+          <button class="btn gold" onclick="undoDelete()">↩ Undo Delete</button>
+          <button class="btn primary" onclick="show('add')">+ Add Student</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="all-records-table"></div>
+    </div>
+
+    <!-- ── VIEW: QUEUE ── -->
+    <div class="view" id="view-queue">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Registration Queue</div>
+          <div class="page-sub">FIFO — First In, First Out. Front of queue is processed first.</div>
+        </div>
+        <div class="top-actions">
+          <button class="btn sage" onclick="processAll()">▷ Process All</button>
+          <button class="btn" onclick="processOne()">▷ Process Next</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Queue Contents</div>
+        <div class="card-sub">Front → Rear</div>
+        <div id="queue-view"></div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: STACK ── -->
+    <div class="view" id="view-stack">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Undo Stack</div>
+          <div class="page-sub">LIFO — Last In, First Out. Top of stack is the most recently deleted record.</div>
+        </div>
+        <div class="top-actions">
+          <button class="btn gold" onclick="undoDelete()">↩ Undo Last Delete</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stack Contents</div>
+        <div class="card-sub">Top → Bottom</div>
+        <div id="stack-view"></div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: DS INFO ── -->
+    <div class="view" id="view-info">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">Data Structure Justification</div>
+          <div class="page-sub">Why each structure was chosen for this system</div>
+        </div>
+      </div>
+
+      <div class="ds-info-grid">
+        <div class="ds-info-card">
+          <h4><span class="ds-dot" style="background:var(--gold)"></span>Linked List</h4>
+          <p>Primary storage for all student records. Each node holds one student and a pointer to the next, enabling dynamic memory growth without fixed-size array limits. Insertions are O(1) at head/tail; display traversal is O(n). Supports efficient removal without shifting elements.</p>
+        </div>
+        <div class="ds-info-card">
+          <h4><span class="ds-dot" style="background:var(--rust)"></span>Stack (LIFO)</h4>
+          <p>Stores deleted records in last-in-first-out order to support Undo Delete. The most recently deleted student sits at the top, so undoing always restores the correct record. Push on delete, pop on undo. O(1) for both operations.</p>
+        </div>
+        <div class="ds-info-card">
+          <h4><span class="ds-dot" style="background:var(--sage)"></span>Queue (FIFO)</h4>
+          <p>Manages the registration pipeline. New students are enqueued and wait for batch processing. This models real-world admission workflows where requests are handled in arrival order — first-come, first-served. Enqueue and dequeue are both O(1).</p>
+        </div>
+        <div class="ds-info-card">
+          <h4><span class="ds-dot" style="background:var(--sky)"></span>Hash Table</h4>
+          <p>Provides O(1) average-case lookup by Student ID via a custom hash function with separate chaining for collision resolution. Critical for instant search when the college has thousands of records. Dramatically faster than linear search through the Linked List.</p>
+        </div>
+        <div class="ds-info-card" style="grid-column: 1/-1">
+          <h4><span class="ds-dot" style="background:var(--muted)"></span>Binary Search Tree (BST)</h4>
+          <p>Stores students ordered by ID for O(log n) search and sorted traversal (in-order = lexicographic ID order). Complements the Hash Table by supporting range queries and providing a secondary sorted index. Updates all three structures (LL, HT, BST) simultaneously on every insert, update, and delete to ensure consistency.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Complexity Summary</div>
+        <div class="card-sub" style="margin-bottom:0">Big-O analysis per operation</div>
+        <table class="complexity" style="margin-top:16px">
+          <thead>
+            <tr>
+              <th>Operation</th>
+              <th>Linked List</th>
+              <th>Hash Table</th>
+              <th>BST</th>
+              <th>Stack / Queue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Insert</td><td>O(1)</td><td>O(1) avg</td><td>O(log n)</td><td>O(1)</td></tr>
+            <tr><td>Search by ID</td><td>O(n)</td><td>O(1) avg</td><td>O(log n)</td><td>—</td></tr>
+            <tr><td>Delete</td><td>O(n)</td><td>O(1) avg</td><td>O(log n)</td><td>O(1)</td></tr>
+            <tr><td>Display All</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td></tr>
+            <tr><td>Undo / Enqueue</td><td>—</td><td>—</td><td>—</td><td>O(1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  DATA STRUCTURES
+// ═══════════════════════════════════════
+
+// 1. Doubly Linked List
+class LLNode {
+  constructor(s) { this.s = s; this.next = null; this.prev = null; }
+}
+class LinkedList {
+  constructor() { this.head = null; this.tail = null; this.size = 0; }
+  append(s) {
+    const n = new LLNode(s);
+    if (!this.tail) { this.head = this.tail = n; }
+    else { n.prev = this.tail; this.tail.next = n; this.tail = n; }
+    this.size++;
+  }
+  remove(id) {
+    let c = this.head;
+    while (c) {
+      if (c.s.id === id) {
+        if (c.prev) c.prev.next = c.next; else this.head = c.next;
+        if (c.next) c.next.prev = c.prev; else this.tail = c.prev;
+        this.size--;
+        return c.s;
+      }
+      c = c.next;
+    }
+    return null;
+  }
+  update(id, data) {
+    let c = this.head;
+    while (c) { if (c.s.id === id) { Object.assign(c.s, data); return c.s; } c = c.next; }
+    return null;
+  }
+  toArray() { const a = []; let c = this.head; while (c) { a.push(c.s); c = c.next; } return a; }
+}
+
+// 2. Stack (LIFO)
+class Stack {
+  constructor() { this.items = []; }
+  push(x) { this.items.push(x); }
+  pop()    { return this.items.pop() || null; }
+  size()   { return this.items.length; }
+  toArray(){ return [...this.items]; }
+}
+
+// 3. Queue (FIFO)
+class Queue {
+  constructor() { this.items = []; }
+  enqueue(x)  { this.items.push(x); }
+  dequeue()   { return this.items.shift() || null; }
+  size()      { return this.items.length; }
+  toArray()   { return [...this.items]; }
+}
+
+// 4. Hash Table (separate chaining)
+class HashTable {
+  constructor(sz = 128) { this.b = Array.from({length: sz}, () => []); this.sz = sz; }
+  _h(k) { let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) % this.sz; return h; }
+  set(k, v) { const b = this.b[this._h(k)]; const i = b.findIndex(e => e[0] === k); if (i >= 0) b[i][1] = v; else b.push([k, v]); }
+  get(k)    { const e = this.b[this._h(k)].find(e => e[0] === k); return e ? e[1] : null; }
+  del(k)    { const b = this.b[this._h(k)]; const i = b.findIndex(e => e[0] === k); if (i >= 0) { b.splice(i, 1); return true; } return false; }
+}
+
+// 5. Binary Search Tree
+class BNode { constructor(s) { this.s = s; this.l = null; this.r = null; } }
+class BST {
+  constructor() { this.root = null; }
+  _ins(n, s) {
+    if (!n) return new BNode(s);
+    if (s.id < n.s.id) n.l = this._ins(n.l, s);
+    else if (s.id > n.s.id) n.r = this._ins(n.r, s);
+    else n.s = s;
+    return n;
+  }
+  insert(s) { this.root = this._ins(this.root, s); }
+  _find(n, id) {
+    if (!n) return null;
+    if (id === n.s.id) return n.s;
+    return id < n.s.id ? this._find(n.l, id) : this._find(n.r, id);
+  }
+  find(id) { return this._find(this.root, id); }
+  _del(n, id) {
+    if (!n) return null;
+    if (id < n.s.id) { n.l = this._del(n.l, id); return n; }
+    if (id > n.s.id) { n.r = this._del(n.r, id); return n; }
+    if (!n.l) return n.r;
+    if (!n.r) return n.l;
+    let m = n.r; while (m.l) m = m.l;
+    n.s = m.s; n.r = this._del(n.r, m.s.id); return n;
+  }
+  delete(id) { this.root = this._del(this.root, id); }
+}
+
+// ═══════════════════════════════════════
+//  SYSTEM INIT
+// ═══════════════════════════════════════
+const ll    = new LinkedList();
+const stack = new Stack();
+const queue = new Queue();
+const ht    = new HashTable();
+const bst   = new BST();
+
+const AVATARS = ['#c2522a','#3b6fa0','#4a7c6a','#d4a84b','#8c5cc2','#5c8cc2','#c25c8c'];
+function avatarColor(name) { let h = 0; for (const c of name) h = (h*31+c.charCodeAt(0))%AVATARS.length; return AVATARS[h]; }
+function initials(name) { return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join(''); }
+
+const SEED = [
+  {id:'STU-001',name:'Alice Mwale',    program:'Computer Science',    year:'2',status:'active',  gpa:3.8},
+  {id:'STU-002',name:'Brian Tembo',    program:'Information Technology',year:'1',status:'active',gpa:3.2},
+  {id:'STU-003',name:'Chanda Phiri',   program:'Electrical Engineering',year:'3',status:'probation',gpa:2.1},
+  {id:'STU-004',name:'Diana Banda',    program:'Business Administration',year:'4',status:'active',gpa:3.6},
+  {id:'STU-005',name:'Emmanuel Zulu',  program:'Mathematics',           year:'2',status:'active', gpa:3.4},
+  {id:'STU-006',name:'Fatima Lungu',   program:'Computer Science',      year:'3',status:'inactive',gpa:2.8},
+];
+SEED.forEach(s => { ll.append(s); ht.set(s.id, s); bst.insert(s); });
+
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('act'));
+  document.getElementById('view-' + id).classList.add('active');
+  const nb = document.getElementById('nav-' + id);
+  if (nb) nb.classList.add('act');
+  renderAll();
+}
+
+// ═══════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════
+let notifTimer;
+function notify(msg, type = 'success') {
+  const el = document.getElementById('notif');
+  const icons = {success:'✓', error:'✕', info:'ℹ', warn:'⚠'};
+  document.getElementById('notif-icon').textContent = icons[type] || '✓';
+  document.getElementById('notif-msg').textContent = msg;
+  el.className = type + ' show';
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ═══════════════════════════════════════
+//  RENDER HELPERS
+// ═══════════════════════════════════════
+function programShort(p) {
+  const m = {'Computer Science':'Comp. Sci.','Information Technology':'Info. Tech.','Electrical Engineering':'Elec. Eng.','Business Administration':'Bus. Admin.','Mathematics':'Mathematics'};
+  return m[p] || p;
+}
+
+function buildTable(students, showActions = true) {
+  if (!students.length) return '<div class="empty-state">No records found</div>';
+  const rows = students.map(s => {
+    const col = avatarColor(s.name);
+    const ini = initials(s.name);
+    const gpaClass = s.gpa >= 3.5 ? 'gpa-hi' : s.gpa >= 2.5 ? 'gpa-md' : 'gpa-lo';
+    const status = s.status || 'active';
+    return `
+      <div class="tbl-row" onclick="${showActions ? `openEdit('${s.id}')` : ''}">
+        <div class="stud-name-cell">
+          <div class="mini-avatar" style="background:${col}18;color:${col}">${ini}</div>
+          <div>
+            <div>${s.name}</div>
+            <div class="stud-id">${s.id}</div>
+          </div>
+        </div>
+        <div class="tbl-cell">${programShort(s.program)}</div>
+        <div class="tbl-cell">Year ${s.year}</div>
+        <div><span class="badge ${status}">${status.charAt(0).toUpperCase()+status.slice(1)}</span></div>
+        <div class="gpa-chip ${gpaClass}" title="GPA">${s.gpa ? s.gpa.toFixed(1) : '—'}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="tbl-head">
+      <div>Student</div>
+      <div>Programme</div>
+      <div>Year</div>
+      <div>Status</div>
+      <div style="text-align:right">GPA</div>
+    </div>
+    ${rows}`;
+}
+
+function renderAll() {
+  renderDash();
+  renderRecords();
+  renderQueueViews();
+  renderStackView();
+  renderQueueAddPreview();
+}
+
+function renderDash() {
+  const all = ll.toArray();
+  document.getElementById('stat-total').textContent = ll.size;
+  document.getElementById('stat-queue').textContent = queue.size();
+  document.getElementById('stat-stack').textContent = stack.size();
+  const gpas = all.filter(s => s.gpa).map(s => s.gpa);
+  const avg  = gpas.length ? (gpas.reduce((a,b)=>a+b,0)/gpas.length).toFixed(2) : '—';
+  document.getElementById('stat-gpa').textContent = avg;
+  document.getElementById('stat-delta-total').textContent = ll.size === 1 ? '1 student enrolled' : `${ll.size} students enrolled`;
+  document.getElementById('stat-delta-queue').textContent = queue.size() === 0 ? 'Queue is empty' : `${queue.size()} pending`;
+
+  // Chart
+  const months = ['Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const newIn  = [210,185,240,95,60,310,275,190];
+  const left   = [20,15,30,12,8,25,18,14];
+  const maxV   = Math.max(...newIn);
+  const bc     = document.getElementById('barChart');
+  bc.innerHTML = '';
+  months.forEach((m, i) => {
+    const div = document.createElement('div');
+    div.className = 'bar-col';
+    const h1 = Math.round((newIn[i]/maxV)*120);
+    const h2 = Math.round((left[i]/maxV)*120);
+    div.innerHTML = `
+      <div class="bar-wrap">
+        <div class="bar" style="height:${h1}px;background:var(--rust);opacity:.8"></div>
+        <div class="bar" style="height:${h2}px;background:var(--border)"></div>
+      </div>
+      <div class="bar-month">${m}</div>`;
+    bc.appendChild(div);
+  });
+
+  // Programme breakdown
+  const counts = {};
+  all.forEach(s => { counts[s.program] = (counts[s.program]||0) + 1; });
+  const total = all.length || 1;
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const colors = [var_('--rust'),var_('--gold'),var_('--sage'),var_('--sky'),var_('--muted')];
+  const pl = document.getElementById('progList');
+  pl.innerHTML = '';
+  sorted.slice(0,5).forEach(([prog,cnt],i) => {
+    const pct = Math.round((cnt/total)*100);
+    pl.innerHTML += `
+      <div class="prog-item">
+        <div class="prog-row">
+          <span class="prog-name">${programShort(prog)}</span>
+          <span class="prog-pct">${pct}%</span>
+        </div>
+        <div class="prog-bar-bg">
+          <div class="prog-bar-fill" style="width:${Math.max(pct,3)}%;background:${colors[i]||colors[4]}"></div>
+        </div>
+      </div>`;
+  });
+  if (!sorted.length) pl.innerHTML = '<div style="font-size:12px;color:var(--muted)">No students yet</div>';
+
+  // Recent
+  const recent = all.slice(-5).reverse();
+  document.getElementById('dash-table').innerHTML = buildTable(recent, false);
+}
+
+function var_(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function renderRecords() {
+  const all = ll.toArray();
+  document.getElementById('rec-count').textContent = all.length;
+  document.getElementById('all-records-table').innerHTML =
+    all.length
+      ? buildTable(all).replace(/onclick="openEdit\('([^']+)'\)"/g,
+          (_, id) => `onclick="openEdit('${id}'); event.stopPropagation()"`)
+      : '<div class="empty-state">No students enrolled. Add some first.</div>';
+
+  // Replace rows to add delete buttons
+  const wrap = document.getElementById('all-records-table');
+  wrap.innerHTML = '';
+  if (!all.length) { wrap.innerHTML = '<div class="empty-state">No students enrolled yet.</div>'; return; }
+  wrap.innerHTML = `
+    <div class="tbl-head">
+      <div>Student</div>
+      <div>Programme</div>
+      <div>Year</div>
+      <div>Status</div>
+      <div style="text-align:right">Actions</div>
+    </div>`;
+  all.forEach(s => {
+    const col = avatarColor(s.name);
+    const ini = initials(s.name);
+    const row = document.createElement('div');
+    row.className = 'tbl-row';
+    row.style.gridTemplateColumns = '2fr 1.4fr 0.8fr 90px 90px';
+    row.innerHTML = `
+      <div class="stud-name-cell">
+        <div class="mini-avatar" style="background:${col}18;color:${col}">${ini}</div>
+        <div>
+          <div>${s.name}</div>
+          <div class="stud-id">${s.id}</div>
+        </div>
+      </div>
+      <div class="tbl-cell">${programShort(s.program)}</div>
+      <div class="tbl-cell">Year ${s.year}</div>
+      <div><span class="badge ${s.status||'active'}">${(s.status||'active').charAt(0).toUpperCase()+(s.status||'active').slice(1)}</span></div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn" style="padding:4px 10px;font-size:11px" onclick="openEdit('${s.id}')">Edit</button>
+        <button class="btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteStudent('${s.id}')">✕</button>
+      </div>`;
+    wrap.appendChild(row);
+  });
+}
+
+function renderQueueViews() {
+  const q = queue.toArray();
+  // queue section view
+  const qv = document.getElementById('queue-view');
+  if (qv) {
+    if (!q.length) { qv.innerHTML = '<div class="empty-state">Queue is empty — enqueue a student to see them here</div>'; }
+    else {
+      qv.innerHTML = `<div class="ds-list">${q.map((s,i) => `
+        <div class="ds-item">
+          <div class="ds-num q-num">${i+1}</div>
+          <div style="flex:1">
+            <strong style="font-size:13px">${s.name}</strong>
+            <div style="font-size:11px;color:var(--muted)">${s.id} · ${s.program} · Year ${s.year}</div>
+          </div>
+          ${i===0 ? '<span class="ds-tag">FRONT</span>' : ''}
+        </div>`).join('')}
+      </div>`;
+    }
+  }
+}
+
+function renderQueueAddPreview() {
+  const q = queue.toArray();
+  const el = document.getElementById('queue-add-preview');
+  if (!el) return;
+  if (!q.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px">Queue is empty. Enqueue a student above.</div>'; return; }
+  el.innerHTML = `<div class="ds-list">${q.map((s,i) => `
+    <div class="ds-item">
+      <div class="ds-num q-num">${i+1}</div>
+      <span style="font-size:12px"><strong>${s.id}</strong> — ${s.name}</span>
+      ${i===0 ? '<span class="ds-tag">FRONT</span>' : ''}
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderStackView() {
+  const items = stack.toArray().reverse(); // top first
+  const sv = document.getElementById('stack-view');
+  if (!sv) return;
+  if (!items.length) { sv.innerHTML = '<div class="empty-state">Stack is empty. Delete a student to push to the stack.</div>'; return; }
+  sv.innerHTML = `<div class="ds-list">${items.map((s,i) => `
+    <div class="ds-item ${i===0 ? 's-top' : ''}">
+      <div class="ds-num s-num">${items.length - i}</div>
+      <div style="flex:1">
+        <strong style="font-size:13px">${s.name}</strong>
+        <div style="font-size:11px;color:var(--muted)">${s.id} · ${s.program} · Year ${s.year}</div>
+      </div>
+      ${i===0 ? '<span class="ds-tag" style="color:var(--rust)">TOP</span>' : ''}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+//  OPERATIONS
+// ═══════════════════════════════════════
+function enqueueStudent() {
+  const id   = document.getElementById('fId').value.trim().toUpperCase();
+  const name = document.getElementById('fName').value.trim();
+  const prog = document.getElementById('fProgram').value;
+  const year = document.getElementById('fYear').value;
+  if (!id || !name) { notify('Student ID and Name are required', 'error'); return; }
+  if (ht.get(id)) { notify(`ID ${id} already exists in records`, 'error'); return; }
+  if (queue.toArray().find(s => s.id === id)) { notify(`ID ${id} is already in the queue`, 'error'); return; }
+  const student = { id, name, program: prog, year, status: 'active', gpa: 0 };
+  queue.enqueue(student);
+  notify(`${name} added to queue (position ${queue.size()})`, 'info');
+  document.getElementById('fId').value = '';
+  document.getElementById('fName').value = '';
+  renderAll();
+}
+
+function processAll() {
+  if (!queue.size()) { notify('Queue is empty', 'warn'); return; }
+  let count = 0;
+  while (queue.size()) {
+    const s = queue.dequeue();
+    ll.append(s); ht.set(s.id, s); bst.insert(s); count++;
+  }
+  notify(`Processed ${count} student(s) from queue`, 'success');
+  renderAll();
+}
+
+function processOne() {
+  if (!queue.size()) { notify('Queue is empty', 'warn'); return; }
+  const s = queue.dequeue();
+  ll.append(s); ht.set(s.id, s); bst.insert(s);
+  notify(`Processed: ${s.name} (${s.id})`, 'success');
+  renderAll();
+}
+
+function deleteStudent(id) {
+  const s = ht.get(id) || ll.toArray().find(x => x.id === id);
+  if (!s) { notify('Student not found', 'error'); return; }
+  ll.remove(id); ht.del(id); bst.delete(id);
+  stack.push({...s});
+  notify(`${s.name} deleted. Pushed to undo stack.`, 'warn');
+  renderAll();
+}
+
+function undoDelete() {
+  const s = stack.pop();
+  if (!s) { notify('Undo stack is empty', 'warn'); return; }
+  ll.append(s); ht.set(s.id, s); bst.insert(s);
+  notify(`Restored: ${s.name} (${s.id})`, 'success');
+  renderAll();
+}
+
+function doSearch() {
+  const id  = document.getElementById('searchInput').value.trim().toUpperCase();
+  const box = document.getElementById('searchResult');
+  if (!id) { notify('Enter a Student ID', 'warn'); return; }
+  let s = ht.get(id);
+  const method = s ? 'Hash Table — O(1) avg' : 'BST — O(log n)';
+  if (!s) s = bst.find(id);
+  if (s) {
+    const col = avatarColor(s.name);
+    const ini = initials(s.name);
+    box.className = 'result-box found';
+    box.innerHTML = `
+      <div style="font-size:10px;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">✓ Found via ${method}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div class="mini-avatar" style="width:40px;height:40px;font-size:14px;background:${col}18;color:${col}">${ini}</div>
+        <div>
+          <div style="font-weight:500;font-size:15px">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${s.id}</div>
+        </div>
+      </div>
+      <div class="result-row"><span class="rl">Programme</span>${s.program}</div>
+      <div class="result-row"><span class="rl">Year</span>Year ${s.year}</div>
+      <div class="result-row"><span class="rl">Status</span>${(s.status||'active').charAt(0).toUpperCase()+(s.status||'active').slice(1)}</div>
+      <div class="result-row"><span class="rl">GPA</span>${s.gpa ? s.gpa.toFixed(1) : '—'}</div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn" style="font-size:11px" onclick="openEdit('${s.id}')">Edit Record</button>
+        <button class="btn danger" style="font-size:11px" onclick="deleteStudent('${s.id}');document.getElementById('searchResult').className='result-box'">Delete</button>
+      </div>`;
+  } else {
+    box.className = 'result-box not-found';
+    box.innerHTML = `No student found with ID: <strong>${id}</strong>`;
+  }
+}
+
+// ── EDIT MODAL ──
+let editingId = null;
+function openEdit(id) {
+  const s = ht.get(id) || bst.find(id);
+  if (!s) return;
+  editingId = id;
+  document.getElementById('eId').value = s.id;
+  document.getElementById('eName').value = s.name;
+  document.getElementById('eProgram').value = s.program;
+  document.getElementById('eYear').value = s.year;
+  document.getElementById('eStatus').value = s.status || 'active';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+function saveEdit() {
+  const name   = document.getElementById('eName').value.trim();
+  const prog   = document.getElementById('eProgram').value;
+  const year   = document.getElementById('eYear').value;
+  const status = document.getElementById('eStatus').value;
+  if (!name) { notify('Name cannot be empty', 'error'); return; }
+  const s = ht.get(editingId);
+  if (!s) { notify('Student not found', 'error'); return; }
+  Object.assign(s, { name, program: prog, year, status });
+  ht.set(editingId, s);
+  bst.insert(s);
+  ll.update(editingId, { name, program: prog, year, status });
+  notify(`Updated: ${name}`, 'success');
+  closeModal();
+  renderAll();
+}
+
+// close modal on bg click
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('editModal')) closeModal();
+});
+
+// ── INIT ──
+renderAll();
+</script>
+</body>
+</html>
